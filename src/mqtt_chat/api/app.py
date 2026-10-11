@@ -1,0 +1,82 @@
+"""FastAPI: health check e lifespan do worker MQTT."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+from mqtt_chat.config.settings import get_settings
+from mqtt_chat.logging import events, log_event
+from mqtt_chat.logging.bootstrap import setup_logging_from_settings
+from mqtt_chat.worker.monitor import WorkerHealth, run_with_reconnect
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Inicia worker MQTT na subida; cancela no shutdown."""
+    settings = get_settings()
+    setup_logging_from_settings(settings)
+    stop_event = asyncio.Event()
+    health = WorkerHealth()
+    publish_queue: asyncio.Queue[tuple[str, bytes]] = asyncio.Queue(maxsize=32)
+
+    app.state.worker_health = health
+    app.state.publish_queue = publish_queue
+
+    worker_task = asyncio.create_task(
+        run_with_reconnect(settings, stop_event, health, publish_queue),
+        name="mqtt-worker",
+    )
+    log_event(
+        logger,
+        logging.INFO,
+        events.API_STARTED,
+        "API started",
+        persist_mode=settings.worker_persist_mode,
+        mqtt_host=settings.mqtt_host,
+        mqtt_port=settings.mqtt_port,
+    )
+
+    yield
+
+    stop_event.set()
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
+    log_event(logger, logging.INFO, events.API_SHUTDOWN, "API shutdown complete")
+
+
+app = FastAPI(title="mqtt-chat", lifespan=lifespan)
+
+
+@app.get("/health")
+async def health() -> dict:
+    """Health check inclui estado da conexão MQTT do worker."""
+    health_state: WorkerHealth = app.state.worker_health
+    return {
+        "status": "ok",
+        "mqtt_connected": health_state.mqtt_connected,
+        "mqtt_reconnect_count": health_state.reconnect_count,
+        "mqtt_last_error": health_state.last_error,
+    }
+
+
+def run() -> None:
+    """Entrypoint uvicorn (script mqtt-chat-api)."""
+    import uvicorn
+
+    settings = get_settings()
+    setup_logging_from_settings(settings)
+    uvicorn.run(
+        "mqtt_chat.api.app:app",
+        host=settings.api_host,
+        port=settings.api_port,
+        log_level="info",
+    )

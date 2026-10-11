@@ -1,0 +1,154 @@
+---
+description: Stack, glossário, Agent Skills, Docker, docs oficiais — mqtt-chat
+alwaysApply: true
+---
+
+# mqtt-chat — regra de projeto
+
+## Documentos normativos (ordem de precedência)
+
+1. **Documentação oficial** (MQTT, FastAPI, uv, FastMCP, Pydantic AI, Firebase) — links na seção abaixo.
+2. **`docs/requirements.md`** — requisitos e decisões de produto.
+3. **[`docs/glossary.md`](docs/glossary.md)** — **obrigatório** para toda nomenclatura (PT em docs/docstrings vs EN em código/contratos). **DEVE** consultar antes de criar classes, funções, tools MCP, campos Firestore/MQTT ou textos de UX. **NUNCA** inventar sinônimos (`usuario`, `atuador`, `dispositivo` em identificadores); usar apenas termos do glossário (`user`, `actuator`, `device`, `device_type` ∈ `sensor` | `actuator`, `broker`, etc.).
+4. **[`docs/skills.md`](docs/skills.md)** e **[`.agents/skills/`](../.agents/skills/)** — **obrigatório** conforme o tipo de tarefa. **DEVE** ler a matriz em `docs/skills.md` e o `SKILL.md` da Skill aplicável **antes** de implementar ou revisar código nas áreas abaixo. **NUNCA** aplicar todas as Skills em toda tarefa. Stack mqtt-chat, glossário e docs oficiais **prevalecem** sobre exemplos genéricos dentro das Skills.
+5. **Esta regra** (`.cursor/rules/mqtt-chat-project.mdc`).
+
+Em conflito entre regra e `docs/requirements.md`, **prevalece `docs/requirements.md`**. Em conflito com documentação oficial, **prevalece a documentação oficial**.
+
+## Agent Skills (uso obrigatório por contexto)
+
+| Tarefa | Skill (pasta em `.agents/skills/`) |
+|--------|-------------------------------------|
+| Python idiomático, módulos, refatoração | `python-patterns` |
+| Legibilidade, revisão, smells | `clean-code` |
+| Estrutura `tools/` / `services/` / `clients/` | `improve-codebase-architecture` |
+| Schemas, validators, serialização | `pydantic` |
+| Servidor MCP, design de tools IoT | `mcp-builder` (+ **FastMCP**, padrão `~/DEV/mcp/mcp-sport`) |
+| Agente Pydantic AI, chat, tools do agente | `building-pydantic-ai-agents` |
+| Harness / sessões longas (se adotado) | `pydantic-ai-harness` |
+
+- **DEVE** instalar/reinstalar Skills somente via comandos em `docs/skills.md` (sempre `owner/repo@skill-name`).
+- **DEVE** preferir **FastMCP** quando `mcp-builder` ou outra Skill mostrar SDK MCP cru.
+- **NUNCA** seguir Skill que contradiga glossário, stack ou Firebase/Mosquitto deste projeto.
+
+## Escopo
+
+Plataforma web: backend **cliente MQTT**, dispositivos embarcados (sensor/atuador), persistência **Firebase**, chat com **Pydantic AI** + tools **FastMCP**. PoC primeiro; adoção por **QR code** e ACL Mosquitto no MVP.
+
+## Tecnologias obrigatórias
+
+- **DEVE** usar **Python 3.13+**, **uv** (`pyproject.toml`, `uv.lock`), **FastAPI**, **FastMCP**, **Pydantic AI** (`pydantic-ai`), **Pydantic v2**.
+- **DEVE** usar **Firebase** (Firestore + Authentication no MVP; Admin SDK **somente no backend**).
+- **DEVE** usar broker **Eclipse Mosquitto** — **NUNCA** adicionar EMQX salvo alteração explícita em `docs/requirements.md`.
+- **DEVE** implementar cliente MQTT no backend (preferência **aiomqtt** async com FastAPI).
+- **NUNCA** usar LangChain neste repositório.
+- **NUNCA** usar SQLite/PostgreSQL como store principal de negócio (telemetria/dispositivos/usuários) — **Firebase/Firestore**.
+- **NUNCA** replicar no mqtt-chat a tabela SQLite `mqtt_messages` do `device_app` (log bruto de tópico/payload). Ingestão MQTT → **`services/`** → **Firestore** (ex.: subcoleção `telemetry` por `device`, campos derivados em `devices` como `last_seen_at` / `operation_status`).
+- **NUNCA** permitir que o LLM acesse Firestore ou MQTT diretamente; **SEMPRE** via tools (FastMCP / agente Pydantic AI → `services/`).
+- **DEVE** seguir [`docs/logging.md`](docs/logging.md) para logs do backend: JSON estruturado, eventos entrada/transformação/persistência, erros com módulo/função/linha; **NUNCA** logar passwords, tokens ou conteúdo de `secrets/`.
+- **NUNCA** usar logs como telemetria de desempenho (latência/duração de código); métricas de performance serão camada futura (OTel Metrics), separada de `mqtt_chat.logging`.
+
+## Imagens Docker
+
+| Serviço | Imagem | Tag |
+|---------|--------|-----|
+| MQTT broker | `eclipse-mosquitto` | `2.0.21` (pin patch; ver `task/001-docker.md`) |
+
+- **DEVE** subir Mosquitto via `docker-compose` com config em `docker/mosquitto/mosquitto.conf`.
+- **NÃO DEVE** expor broker sem auth em ambiente fora de dev local.
+- Simulador de device e backend Python entram no compose quando implementados; **NÃO** substituir Mosquitto por outro broker.
+
+## Documentação oficial (fonte de decisão)
+
+| Tema | URL |
+|------|-----|
+| MQTT | https://mqtt.org/mqtt-specification/ |
+| Mosquitto | https://mosquitto.org/ |
+| FastAPI | https://fastapi.tiangolo.com/ |
+| uv | https://docs.astral.sh/uv/ |
+| FastMCP | https://gofastmcp.com/getting-started/welcome |
+| Pydantic AI | https://pydantic.dev/docs/ai/overview/ |
+| Firebase | https://firebase.google.com/docs |
+
+Índices LLM: https://gofastmcp.com/llms.txt , https://pydantic.dev/llms.txt
+
+## Repositórios de referência (padrão interno)
+
+| Repo | Path | O que copiar |
+|------|------|--------------|
+| mcp-sport | https://github.com/andrequeiroz2/mcp-sport , ~/DEV/mcp/mcp-sport | Estrutura tools/ → services/ → clients/, FastMCP, uv, Pydantic; ver docs/Architectural_Design.md |
+| device_app | ~/DEV/Tauri/device_app | **Somente domínio**: device sensor/atuador, broker, telemetria, LWT, QoS, parameter_ranges, command_spec — **NUNCA** copiar stack Tauri/Rust para o backend |
+
+## Arquitetura (alto nível)
+
+```
+Frontend (chat + UI adoção QR) → FastAPI → Pydantic AI Agent
+FastAPI / FastMCP tools → services/ → clients/firebase.py | clients/mqtt.py
+Worker MQTT assina broker → persiste telemetria Firestore
+Embarcados ↔ Mosquitto (tópicos tenants/{user_id}/devices/{device_id}/...)
+```
+
+- **FastMCP**: expõe tools IoT; delega a `services/`.
+- **Pydantic AI**: orquestra chat; tools Python ou MCP capability apontando ao mesmo contrato.
+- **RAG**: fase 2 via embeddings Pydantic AI; **NUNCA** substituir tools para valores ao vivo ou histórico.
+
+### Tópicos MQTT (obrigatório)
+
+- Telemetria: `tenants/{user_id}/devices/{device_id}/telemetry`
+- Comandos: `tenants/{user_id}/devices/{device_id}/commands`
+- Estado: `tenants/{user_id}/devices/{device_id}/state`
+- Presença (MVP): `.../status` (LWT)
+
+### Estrutura de pacotes alvo
+
+```
+src/mqtt_chat/
+  api/ agent/ clients/ schemas/ validators/ services/ tools/ worker/
+  server.py   # FastMCP + registro tools
+```
+
+- **DEVE** manter **um cliente** por integração externa (`clients/mqtt.py`, `clients/firebase.py`).
+- **DEVE** manter tools MCP **finas** (sem SQL/MQTT/HTTP direto na tool).
+
+## Adoção de dispositivo (MVP)
+
+- **DEVE** implementar adoção por **leitura de QR** no frontend (câmera); QR contém **claim_token**, **NUNCA** senha MQTT em claro.
+- **NUNCA** implementar leitura de QR como tool do LLM; o chat **SOMENTE** orienta o usuário à UI de adoção.
+
+
+## Idioma e nomenclatura (obrigatório)
+
+| Artefato | Idioma |
+|----------|--------|
+| Documentação (`docs/`, README, regras Cursor) | **Português** |
+| Docstrings (módulos, classes, funções, tools MCP) | **Português** |
+| Comentários no código | **Português** |
+| Código executável (corpo de funções, expressões) | **Inglês** onde for idioma natural do código (mensagens de log técnicas podem ser inglês) |
+| Nomes de classes, funções, métodos, variáveis, módulos, pacotes | **Inglês** (`snake_case` / `PascalCase` PEP 8) |
+| Nomes de tools MCP expostas ao LLM | **Inglês** (`list_devices`, `register_device`) — docstring da tool em **português** |
+| Contratos JSON/Firestore/MQTT (campos de payload) | **Inglês** (`device_id`, `claim_token`) |
+
+- **NUNCA** nomear classes ou funções em português (ex.: proibido `CadastrarDispositivo`, `listar_dispositivos` como def Python).
+- **NUNCA** escrever docstrings ou comentários explicativos em inglês, salvo citação literal de spec/API externa.
+- **DEVE** escrever docstrings de tools MCP em português: é a interface que orienta o modelo e o time.
+- **DEVE** alinhar nomes de tools MCP à tabela em [`docs/glossary.md`](docs/glossary.md) (ex.: `list_devices`, `register_device`).
+- **DEVE** atualizar o glossário **antes** de introduzir novo termo de domínio no código ou na documentação.
+
+
+## Tasks (planejamento)
+
+- **DEVE** registrar trabalho planejado e executado na pasta **[`task/`](../task/)** na raiz do repositório (não `tasks/`).
+- **DEVE** nomear task: `NNN-<slug>.md` (ex.: `001-docker.md`, `002-device-simulator.md`); `NNN` três dígitos; `<slug>` **kebab-case inglês**.
+- **PODE** usar subtask `NNN-SS-<slug>.md` (ex.: `001-01-docker.md`) **somente** quando a task for dividida; preferir **um arquivo completo** (`001-docker.md`) com versões, entregáveis e verificação.
+- **DEVE** em cada task documentar **matriz de versões** (Docker Engine, Compose, imagens `image:tag`, runtimes) e critérios de verificação.
+- **DEVE** manter índice em [`task/README.md`](../task/README.md) (ID → arquivo → status).
+- **DEVE** ler a task aplicável antes de implementação não trivial; ao concluir, atualizar **Status** no arquivo.
+- **NUNCA** criar tasks fora de `task/` ou fora do padrão sem alterar esta regra.
+
+## Proibições explícitas
+
+- **NUNCA** commitar `.env`, service account Firebase, ou credenciais Mosquitto.
+- **NUNCA** inventar versões de dependência: **SEMPRE** `uv add` e lockfile.
+- **NUNCA** desviar da stack acima sem atualizar `docs/requirements.md` e esta regra.
+- **NUNCA** usar nomenclatura de domínio fora de [`docs/glossary.md`](docs/glossary.md).
+- **NUNCA** introduzir SQLite, SQLAlchemy ou arquivo `.db` local para telemetria, histórico MQTT ou metadados de negócio (referência `device_app` é **domínio e reconexão**, não stack de persistência).
