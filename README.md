@@ -20,6 +20,14 @@ uv run python -m mqtt_chat
 uv add <pacote>
 ```
 
+## Serviços (`services/`)
+
+| Serviço | Documentação |
+|---------|----------------|
+| UI chat (React) | [`services/frontend/README.md`](services/frontend/README.md) |
+
+Backend (API + worker MQTT): `uv run mqtt-chat-api` · Frontend: `cd services/frontend && npm run dev`.
+
 ## Docker (broker MQTT)
 
 Task: [`task/001-docker.md`](task/001-docker.md)

@@ -30,6 +30,12 @@ FIREBASE_UNAVAILABLE = "firebase.unavailable"
 API_STARTED = "api.started"
 API_SHUTDOWN = "api.shutdown"
 
+# Auth / user profile
+AUTH_TOKEN_REJECTED = "auth.token.rejected"
+USER_PROFILE_CREATED = "user.profile.created"
+USER_PROFILE_UPDATED = "user.profile.updated"
+CHAT_TURN_PERSISTED = "chat.turn.persisted"
+
 # Genérico
 HANDLER_FAILED = "handler.failed"
 UNEXPECTED_ERROR = "unexpected.error"

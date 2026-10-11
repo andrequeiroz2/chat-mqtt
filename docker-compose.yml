@@ -1,4 +1,19 @@
 services:
+  frontend:
+    profiles: ["ui"]
+    image: node:24-alpine
+    container_name: mqtt-chat-frontend
+    working_dir: /app
+    volumes:
+      - ./services/frontend:/app
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./services/frontend/.env
+    networks:
+      - mqtt-chat-net
+
   mosquitto:
     image: eclipse-mosquitto:2.0.21
     container_name: mqtt-chat-mosquitto

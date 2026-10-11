@@ -1,0 +1,33 @@
+rules_version = '2';
+// Rascunho task 006 — publicar no Firebase Console quando auth estiver ativo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+
+      match /chat_sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+
+        match /messages/{messageId} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+    }
+
+    match /devices/{deviceId} {
+      allow read, write: if request.auth != null
+        && resource.data.user_id == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.user_id == request.auth.uid;
+    }
+
+    match /devices/{deviceId}/telemetry/{docId} {
+      allow read: if request.auth != null
+        && get(/databases/$(database)/documents/devices/$(deviceId)).data.user_id
+          == request.auth.uid;
+      allow write: if false;
+    }
+  }
+}

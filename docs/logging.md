@@ -260,6 +260,14 @@ Sequência típica (simulador → worker → Firestore), com `LOG_LEVEL=DEBUG`:
 | `API_STARTED` | `api.started` |
 | `API_SHUTDOWN` | `api.shutdown` |
 
+### 5.3.1 Auth / perfil (task 006)
+
+| Constante | `event` |
+|-----------|---------|
+| `AUTH_TOKEN_REJECTED` | `auth.token.rejected` |
+| `USER_PROFILE_CREATED` | `user.profile.created` |
+| `USER_PROFILE_UPDATED` | `user.profile.updated` |
+
 ### 5.4 Erros genéricos
 
 | Constante | `event` |

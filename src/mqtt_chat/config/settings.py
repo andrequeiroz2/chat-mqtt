@@ -43,6 +43,29 @@ class Settings(BaseSettings):
     log_format: Literal["json", "text"] = Field(default="json", validation_alias="LOG_FORMAT")
     log_service_name: str = Field(default="mqtt-chat", validation_alias="LOG_SERVICE_NAME")
 
+    chat_model: str = Field(
+        default="google:gemini-3.5-flash",
+        validation_alias="CHAT_MODEL",
+    )
+    google_api_key: str | None = Field(default=None, validation_alias="GOOGLE_API_KEY")
+    chat_max_turns: int = Field(
+        default=15,
+        ge=1,
+        le=100,
+        validation_alias="CHAT_MAX_TURNS",
+    )
+
+    @property
+    def chat_max_messages(self) -> int:
+        """Máximo de documentos em messages/ (1 turno = user + assistant)."""
+        return self.chat_max_turns * 2
+
+    def chat_model_configured(self) -> bool:
+        """True se o provedor do modelo tiver credencial (PoC: Google API key)."""
+        if self.chat_model.startswith("google"):
+            return bool(self.google_api_key)
+        return True
+
 
 @lru_cache
 def get_settings() -> Settings:

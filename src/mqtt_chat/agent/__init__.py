@@ -1,0 +1,1 @@
+"""Agente Pydantic AI (chat)."""

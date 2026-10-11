@@ -7,10 +7,13 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from mqtt_chat.config.settings import get_settings
 from mqtt_chat.logging import events, log_event
 from mqtt_chat.logging.bootstrap import setup_logging_from_settings
+from mqtt_chat.api.routes import chat as chat_routes
+from mqtt_chat.api.routes import me as me_routes
 from mqtt_chat.worker.monitor import WorkerHealth, run_with_reconnect
 
 logger = logging.getLogger(__name__)
@@ -54,6 +57,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="mqtt-chat", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(me_routes.router)
+app.include_router(chat_routes.router)
 
 
 @app.get("/health")

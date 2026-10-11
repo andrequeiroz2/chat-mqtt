@@ -1,3 +1,4 @@
+.firebase/
 .venv/
 __pycache__/
 *.py[cod]
@@ -7,6 +8,15 @@ __pycache__/
 .env
 .env.*
 !.env.example
+# Node / Vite (microserviços em services/)
+**/node_modules/
+**/dist/
+**/.vite/
+*.tsbuildinfo
+# Firebase CLI (logs locais)
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 firebase-adminsdk*.json
 secrets/service-account.json
 secrets/*.json

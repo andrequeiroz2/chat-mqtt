@@ -20,6 +20,8 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | Termo em português (docs / UX / docstring) | Identificador em inglês (código / contrato) | Definição |
 |--------------------------------------------|---------------------------------------------|-----------|
 | **Usuário** | `user` | Pessoa que se autentica na aplicação; dono de devices. Campo típico: `user_id` (Firebase Auth UID ou UUID estável). **NUNCA** usar `usuario` em identificadores. |
+| **Provedor de identidade** | `identity_provider` | OAuth federado (MVP: **Google**) no Firebase Authentication. Valor típico em `auth_providers`: `google.com`. |
+| **Perfil do usuário** | `user_profile` | Metadados de aplicação em Firestore `users/{user_id}` (ex.: `display_name`, `photo_url`), complementares ao registro Auth. **NUNCA** confundir com documento `device`. |
 | **Dispositivo** / **dispositivo embarcado** | `device` | Hardware conectado (ESP32, etc.) que publica/assina MQTT. Entidade persistida: coleção/documento `devices`. **NUNCA** `dispositivo`, `embedded_device` como nome de tabela/classe, salvo termo de domínio externo citado. |
 | **Identificador do dispositivo** | `device_id` | Chave pública do device (UUID ou ID estável); aparece em tópicos MQTT e Firestore. |
 | **Endereço MAC** | `mac_address` | Identidade de hardware (normalizado uppercase com `:`); **unique** em `devices`; distinto de `device_id`. |
@@ -66,6 +68,8 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | `read_latest_telemetry` | Ler última telemetria |
 | `publish_command` | Publicar comando (actuator) |
 | `get_telemetry_history` | Obter histórico para gráfico |
+| `get_user_profile` | Ler perfil do usuário autenticado (opcional; preferir deps para saudação) |
+| `update_user_profile` | Atualizar campos permitidos do perfil (ex.: `display_name`) |
 
 ---
 
@@ -89,3 +93,4 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | 2026-10-10 | `mac_address`, `mqtt_topic_base`, `adoption_status`; link contrato adoção v1 |
 | 2026-10-10 | `adoption_session`; fluxo commit tardio (contrato v1.1) |
 | 2026-10-10 | Telemetria: persistência Firestore only (sem espelho `mqtt_messages`) |
+| 2026-10-10 | `identity_provider`, `user_profile`; tools opcionais de perfil (task 006) |

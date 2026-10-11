@@ -320,7 +320,12 @@ Produtos Firebase a confirmar na PoC; proposta inicial alinhada ao domínio de `
 
 ### 6.2 Estrutura de pacotes alvo (espelho mcp-sport)
 
+**Monorepo:** o **frontend** é microserviço em [`services/frontend/`](../services/frontend/) (React/Vite, Firebase Auth Web, `.env` próprio). Comunicação com o backend **somente HTTP** (`/api/v1/*`); sem importar código Python.
+
 ```
+services/
+└── frontend/              # UI chat (deploy independente)
+
 src/mqtt_chat/
 ├── server.py              # FastMCP + registro de tools (e/ou mount FastAPI)
 ├── api/                   # Rotas FastAPI (chat, health, webhook auth)
@@ -426,7 +431,7 @@ _Use esta seção para ir refinando requisitos, restrições de negócio, modelo
 
 ### Notas e pendências
 
-- Definir quais produtos Firebase na PoC (Auth + Firestore mínimo?).
+- ~~Definir quais produtos Firebase na PoC (Auth + Firestore mínimo?)~~ → **Auth Google (MVP) + Firestore `users`**; GitHub depois — ver [task 006](../task/006-user-auth-chat-mcp.md).
 - Versão MQTT do broker/firmware: 3.1.1 vs 5.0 (Mosquitto suporta ambos conforme config).
 - Frontend do chat (stack) ainda não definido.
 

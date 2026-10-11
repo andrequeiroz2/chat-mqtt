@@ -126,6 +126,12 @@
       "sourceType": "github",
       "skillPath": "skills/python-patterns/SKILL.md",
       "computedHash": "3ce7d51e18d3e2fa79635e569e73a8d269bc484ff1095fae7c414543f023e95e"
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/composition-patterns/SKILL.md",
+      "computedHash": "575757e3e25761c8c562d6e395d29f0b76c98b1273c0bd72d88e6ab1bc9c7d42"
     }
   }
 }

@@ -27,6 +27,7 @@ Skills instaladas **no repositório** em [`.agents/skills/`](../.agents/skills/)
 | **python-patterns** | Alta — módulos, refatoração | Complementar **clean-code**. |
 | **improve-codebase-architecture** | Alta — camadas `tools/services/clients` | Snyk/skills.sh: risco médio — revisar sugestões antes de refactor grande. |
 | **clean-code** | Alta — revisão | Evitar refatoração cosmética fora do escopo. |
+| **vercel-composition-patterns** | Alta — arquitetura de componentes React | Foco em composição (providers, compound components); **não** é guia de performance/Next — ver [skills.sh](https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices) se precisar. Stack mqtt-chat: **Vite + React** (ignorar regras específicas de Next.js). |
 
 **Não instaladas de propósito:** Skills de migração *→ Pydantic AI* e Logfire (instalação acidental do repo `pydantic/skills` sem `@pydantic` — removidas).
 
@@ -43,6 +44,7 @@ Skills instaladas **no repositório** em [`.agents/skills/`](../.agents/skills/)
 | 5 | `mcp-builder` | [anthropics/skills](https://github.com/anthropics/skills) | `npx skills add anthropics/skills@mcp-builder -y` |
 | — | `building-pydantic-ai-agents` | pydantic/skills (extra) | `npx skills add pydantic/skills@building-pydantic-ai-agents -y` |
 | — | `pydantic-ai-harness` | pydantic/skills (extra) | `npx skills add pydantic/skills@pydantic-ai-harness -y` |
+| 6 | `vercel-composition-patterns` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | `npx skills add vercel-labs/agent-skills@vercel-composition-patterns -y` |
 
 **Importante:** use sempre `@nome-da-skill` ao adicionar de um monorepo — **NUNCA** `npx skills add https://github.com/pydantic/skills` sem `@`, ou instala dezenas de Skills.
 
@@ -58,6 +60,9 @@ Skills instaladas **no repositório** em [`.agents/skills/`](../.agents/skills/)
 | Agente Pydantic AI, streaming, tools | `building-pydantic-ai-agents`, `pydantic` |
 | Novo servidor MCP / tools IoT | `mcp-builder`, regra **FastMCP** + referência **mcp-sport** |
 | Harness / agente longo (futuro) | `pydantic-ai-harness` |
+| Frontend React (Vite), login, chat, layout | `vercel-composition-patterns` |
+
+**Complementares (não instaladas):** `vercel-react-best-practices` (~788K installs, performance/bundle); `anthropics/skills@frontend-design` (~974K, UI visual).
 
 ---
 
@@ -66,3 +71,4 @@ Skills instaladas **no repositório** em [`.agents/skills/`](../.agents/skills/)
 | Data | Ação |
 |------|------|
 | 2026-10-09 | Instalação das 5 Skills solicitadas + 2 extras Pydantic AI; remoção migração/Logfire |
+| 2026-10-11 | `vercel-composition-patterns` (task 006 / frontend React) |
