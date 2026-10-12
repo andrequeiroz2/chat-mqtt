@@ -46,6 +46,7 @@ Plataforma web: backend **cliente MQTT**, dispositivos embarcados (sensor/atuado
 - **NUNCA** replicar no mqtt-chat a tabela SQLite `mqtt_messages` do `device_app` (log bruto de tópico/payload). Ingestão MQTT → **`services/`** → **Firestore** (ex.: subcoleção `telemetry` por `device`, campos derivados em `devices` como `last_seen_at` / `operation_status`).
 - **NUNCA** permitir que o LLM acesse Firestore ou MQTT diretamente; **SEMPRE** via tools (FastMCP / agente Pydantic AI → `services/`).
 - **DEVE** seguir [`docs/logging.md`](docs/logging.md) para logs do backend: JSON estruturado, eventos entrada/transformação/persistência, erros com módulo/função/linha; **NUNCA** logar passwords, tokens ou conteúdo de `secrets/`.
+- **DEVE** seguir [`docs/auth.md`](docs/auth.md) para autenticação (Firebase Google, Bearer, `user_id`, perfil Firestore); **NUNCA** confiar em `user_id` do corpo da requisição nem expor Admin SDK no frontend.
 - **NUNCA** usar logs como telemetria de desempenho (latência/duração de código); métricas de performance serão camada futura (OTel Metrics), separada de `mqtt_chat.logging`.
 
 ## Imagens Docker

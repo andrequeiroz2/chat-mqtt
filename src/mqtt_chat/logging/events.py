@@ -35,6 +35,7 @@ AUTH_TOKEN_REJECTED = "auth.token.rejected"
 USER_PROFILE_CREATED = "user.profile.created"
 USER_PROFILE_UPDATED = "user.profile.updated"
 CHAT_TURN_PERSISTED = "chat.turn.persisted"
+CHAT_TURN_OFF_TOPIC = "chat.turn.off_topic"
 
 # Genérico
 HANDLER_FAILED = "handler.failed"

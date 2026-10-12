@@ -29,7 +29,7 @@ Análise e requisitos: seção **Análise e levantamento** abaixo.
 | **6c** | FastMCP + tools IoT + mount HTTP + teste Inspector/Cursor |
 | **6d** | Chat usa MCP in-process; `user_id` nas tools |
 
-**Agora:** **6c** (FastMCP IoT + mount HTTP) → depois **6d**.
+**Agora:** **[007-tomatoia-chat-guardrails.md](007-tomatoia-chat-guardrails.md)** (TomatoIA + escopo + persistência) → **6c** → **6d**.
 
 ## Entregáveis (fases)
 
@@ -40,6 +40,7 @@ Análise e requisitos: seção **Análise e levantamento** abaixo.
 - [x] Dependência FastAPI: validação ID token — `api/deps.py`
 - [x] Firestore `users/{user_id}` + `ensure_user_profile`
 - [x] `GET /api/v1/me`, `PATCH /api/v1/me` (PATCH só `display_name`)
+- [x] [`docs/auth.md`](../docs/auth.md) v1 (documento canônico)
 - [x] `firebase/firestore.rules` (+ redeploy se alterou `chat_sessions`)
 
 ### Fase 6b — Chat mínimo
@@ -88,7 +89,7 @@ Análise e requisitos: seção **Análise e levantamento** abaixo.
 2. Chat sem token → 401.
 3. Primeira mensagem do assistente cita `display_name` correto.
 4. `list_devices` (quando existir) só retorna devices do `user_id` do token.
-5. Logs sem ID token ([`docs/logging.md`](../docs/logging.md)).
+5. Logs sem ID token ([`docs/logging.md`](../docs/logging.md); checklist auth: [`docs/auth.md`](../docs/auth.md) §11).
 
 ---
 
@@ -99,6 +100,7 @@ Rascunho para a fase pós-PoC IoT. Decisões marcadas **DECISÃO** / **ABERTO**.
 | Referência | Documento |
 |------------|-----------|
 | Normativo | [`docs/requirements.md`](../docs/requirements.md) §3–§7 |
+| Auth (canônico) | [`docs/auth.md`](../docs/auth.md) **v1** |
 | Nomenclatura | [`docs/glossary.md`](../docs/glossary.md) |
 | Regra projeto | [`.cursor/rules/mqtt-chat-project.mdc`](../.cursor/rules/mqtt-chat-project.mdc) |
 

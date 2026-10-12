@@ -7,8 +7,8 @@ export function SignedOutScreen() {
 
   return (
     <div className="auth-shell">
-      <h1>mqtt-chat</h1>
-      <p className="lead">Assistente IoT — entre com Google para continuar.</p>
+      <h1>TomatoIA</h1>
+      <p className="lead">Assistente IoT do seu painel — entre com Google para continuar.</p>
       <p className="muted" style={{ fontSize: '0.9rem' }}>
         Após o Google, a URL continua a mesma; a tela de chat abre aqui (SPA).
       </p>

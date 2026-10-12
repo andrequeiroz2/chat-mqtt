@@ -12,22 +12,22 @@ from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError, UserError
 from sse_starlette.sse import EventSourceResponse
 
-from mqtt_chat.agent.chat_agent import create_chat_agent, run_chat
+from mqtt_chat.agent.chat_agent import create_chat_agent
 from mqtt_chat.agent.deps import UserDeps
 from mqtt_chat.api.deps import AuthenticatedUser, get_current_user, require_firestore
 from mqtt_chat.config.settings import Settings, get_settings
-from mqtt_chat.schemas.chat import ChatRequest
-from mqtt_chat.services.chat_history import append_turn, load_message_history
+from mqtt_chat.schemas.chat import ChatRequest, ChatResponse, ChatTurnResult
+from mqtt_chat.services.chat_turn import TurnOutcome, execute_chat_turn
 from mqtt_chat.services.user_profile import ensure_user_profile
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 logger = logging.getLogger(__name__)
 
-_agent: Agent[UserDeps, str] | None = None
+_agent: Agent[UserDeps, ChatTurnResult] | None = None
 _agent_model_id: str | None = None
 
 
-def _get_agent(settings: Settings) -> Agent[UserDeps, str]:
+def _get_agent(settings: Settings) -> Agent[UserDeps, ChatTurnResult]:
     global _agent, _agent_model_id
     if _agent is None or _agent_model_id != settings.chat_model:
         _agent = None
@@ -61,30 +61,45 @@ def _user_deps(
     )
 
 
-@router.post("/chat")
+def _raise_model_http_error(exc: ModelHTTPError) -> None:
+    if exc.status_code in (404, 503):
+        detail = "chat_model_busy" if exc.status_code == 503 else "chat_model_unavailable"
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=detail,
+        ) from exc
+    raise exc
+
+
+def _to_response(outcome: TurnOutcome, session_id: str) -> ChatResponse:
+    return ChatResponse(
+        reply=outcome.reply,
+        session_id=session_id,
+        persisted=outcome.persist,
+    )
+
+
+@router.post("/chat", response_model=ChatResponse)
 async def post_chat(
     body: ChatRequest,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
     db: Annotated[FirestoreClient, Depends(require_firestore)],
     settings: Annotated[Settings, Depends(get_settings)],
-) -> dict[str, str]:
+) -> ChatResponse:
     """Um turno de chat; resposta JSON."""
     agent = _get_agent(settings)
     deps = _user_deps(user, db, body.session_id)
-    max_msg = settings.chat_max_messages
-    history = load_message_history(db, user.user_id, body.session_id, max_msg)
     try:
-        reply = await run_chat(agent, deps, body.message, history)
+        outcome = await execute_chat_turn(
+            agent,
+            db,
+            deps,
+            body.message,
+            settings.chat_max_messages,
+        )
     except ModelHTTPError as exc:
-        if exc.status_code in (404, 503):
-            detail = "chat_model_busy" if exc.status_code == 503 else "chat_model_unavailable"
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=detail,
-            ) from exc
-        raise
-    append_turn(db, user.user_id, body.session_id, body.message, reply, max_msg)
-    return {"reply": reply, "session_id": body.session_id}
+        _raise_model_http_error(exc)
+    return _to_response(outcome, body.session_id)
 
 
 @router.post("/chat/stream")
@@ -99,11 +114,24 @@ async def post_chat_stream(
     async def event_generator() -> AsyncIterator[dict[str, str]]:
         agent = _get_agent(settings)
         deps = _user_deps(user, db, body.session_id)
-        max_msg = settings.chat_max_messages
-        history = load_message_history(db, user.user_id, body.session_id, max_msg)
-        reply = await run_chat(agent, deps, body.message, history)
-        append_turn(db, user.user_id, body.session_id, body.message, reply, max_msg)
-        yield {"event": "message", "data": json.dumps({"text": reply}, ensure_ascii=False)}
+        try:
+            outcome = await execute_chat_turn(
+                agent,
+                db,
+                deps,
+                body.message,
+                settings.chat_max_messages,
+            )
+        except ModelHTTPError as exc:
+            _raise_model_http_error(exc)
+        payload = _to_response(outcome, body.session_id)
+        yield {
+            "event": "message",
+            "data": json.dumps(
+                {"text": payload.reply, "persisted": payload.persisted},
+                ensure_ascii=False,
+            ),
+        }
         yield {"event": "done", "data": json.dumps({"session_id": body.session_id})}
 
     return EventSourceResponse(event_generator())

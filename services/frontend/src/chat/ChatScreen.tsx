@@ -55,7 +55,7 @@ export function ChatScreen() {
     <div className="chat-shell">
       <header className="chat-header">
         <div>
-          <h1>mqtt-chat</h1>
+          <h1>TomatoIA</h1>
           <p className="muted">
             Olá, <strong>{profile.display_name}</strong>
           </p>

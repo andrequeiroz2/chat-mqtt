@@ -50,7 +50,11 @@ export function isChatResponse(value: unknown): value is ChatResponse {
   if (!isRecord(value)) {
     return false
   }
-  return isString(value.reply) && isString(value.session_id)
+  return (
+    isString(value.reply) &&
+    isString(value.session_id) &&
+    typeof value.persisted === 'boolean'
+  )
 }
 
 export function parseApiErrorBody(value: unknown): ApiErrorBody | null {

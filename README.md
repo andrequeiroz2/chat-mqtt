@@ -2,7 +2,7 @@
 
 Plataforma web: dispositivos IoT via MQTT (Mosquitto), Firebase, chat com Pydantic AI e tools FastMCP.
 
-Documentação: [`docs/requirements.md`](docs/requirements.md) · Glossário: [`docs/glossary.md`](docs/glossary.md) · Skills: [`docs/skills.md`](docs/skills.md)
+Documentação: [`docs/requirements.md`](docs/requirements.md) · Auth: [`docs/auth.md`](docs/auth.md) · Logging: [`docs/logging.md`](docs/logging.md) · Glossário: [`docs/glossary.md`](docs/glossary.md) · Skills: [`docs/skills.md`](docs/skills.md)
 
 ## Ambiente (uv)
 

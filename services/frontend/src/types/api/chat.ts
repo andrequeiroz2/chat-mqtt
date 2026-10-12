@@ -10,4 +10,5 @@ export type ChatRequest = {
 export type ChatResponse = {
   reply: string
   session_id: string
+  persisted: boolean
 }

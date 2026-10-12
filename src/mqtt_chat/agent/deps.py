@@ -12,3 +12,4 @@ class UserDeps:
     user_id: str
     display_name: str
     session_id: str
+    history_empty: bool = False

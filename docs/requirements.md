@@ -8,7 +8,8 @@ Glossário normativo (PT docs ↔ EN código): [`docs/glossary.md`](glossary.md)
 
 Contratos normativos (payloads MQTT, adoção, identidade): [`docs/contracts/device-adoption.md`](contracts/device-adoption.md) **v1.1** — prevalece sobre rascunhos abaixo em §4–5 quando houver conflito.
 
-Logging estruturado: [`docs/logging.md`](logging.md) · task [005](../task/005-structured-logging.md).
+Logging estruturado: [`docs/logging.md`](logging.md) · task [005](../task/005-structured-logging.md).  
+Autenticação e identidade: [`docs/auth.md`](auth.md) · task [006](../task/006-user-auth-chat-mcp.md).
 
 Agent Skills (Cursor, citadas na regra): [`docs/skills.md`](skills.md) — pasta [`.agents/skills/`](../.agents/skills/).
 
@@ -60,7 +61,8 @@ Aplicação web em que:
 
 - O **backend** se comporta como **cliente MQTT**, conectado a um broker, gerenciando dispositivos embarcados (sensores, atuadores como relés, etc.).
 - O **usuário** se registra na plataforma, **cadastra dispositivos** dos quais passa a ser **proprietário**.
-- O **frontend** é um **chatbot** que usa **MCP** (Model Context Protocol) para executar ações estruturadas e **RAG** para conhecimento documental (manuais, troubleshooting).
+- O **frontend** é um **chatbot** (**TomatoIA** — nome do assistente e marca futura do produto) que usa **MCP** (Model Context Protocol) para executar ações estruturadas e **RAG** para conhecimento documental (manuais, troubleshooting).
+- O assistente **TomatoIA** responde **somente** sobre a plataforma IoT e **devices do usuário autenticado**; perguntas fora desse escopo recebem recusa padrão e **não** entram no histórico persistido (task 007).
 - Exemplos de intenções no chat: cadastrar/remover/atualizar dispositivo, ler telemetria, acionar atuador, pedir **gráfico** dos registros da última semana.
 
 ---

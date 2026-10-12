@@ -25,5 +25,6 @@ Cada task **DEVE** incluir, quando aplicável: **matriz de versões** (Docker, i
 | 004 | [004-mqtt-worker.md](004-mqtt-worker.md) | Concluída (PoC) |
 | 005 | [005-structured-logging.md](005-structured-logging.md) | Em planejamento (spec v1) |
 | 006 | [006-user-auth-chat-mcp.md](006-user-auth-chat-mcp.md) | Em execução (6a/6b OK dev; 6c–6d pendentes) |
+| 007 | [007-tomatoia-chat-guardrails.md](007-tomatoia-chat-guardrails.md) | Em execução (v1 implementada; verificação manual pendente) |
 
 Referências: [`docs/requirements.md`](../docs/requirements.md) · [`.cursor/rules/mqtt-chat-project.mdc`](../.cursor/rules/mqtt-chat-project.mdc)
