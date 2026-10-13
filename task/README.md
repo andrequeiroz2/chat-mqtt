@@ -24,7 +24,9 @@ Cada task **DEVE** incluir, quando aplicável: **matriz de versões** (Docker, i
 | 003 | [003-adoption-network-contracts.md](003-adoption-network-contracts.md) | Concluída (spec v1; aprovação humana pendente) |
 | 004 | [004-mqtt-worker.md](004-mqtt-worker.md) | Concluída (PoC) |
 | 005 | [005-structured-logging.md](005-structured-logging.md) | Em planejamento (spec v1) |
-| 006 | [006-user-auth-chat-mcp.md](006-user-auth-chat-mcp.md) | Em execução (6a/6b OK dev; 6c–6d pendentes) |
+| 006 | [006-user-auth-chat-mcp.md](006-user-auth-chat-mcp.md) | Em execução (6c MCP HTTP; 6d `list_devices` no chat) |
 | 007 | [007-tomatoia-chat-guardrails.md](007-tomatoia-chat-guardrails.md) | Em execução (v1 implementada; verificação manual pendente) |
+| 008 | [008-device-adoption-handshake-refinement.md](008-device-adoption-handshake-refinement.md) | Em planejamento (contrato v1.2-dev; backend adoção) |
+| 009 | [009-adoption-guided-chat-ux.md](009-adoption-guided-chat-ux.md) | Em execução (009a MAC dev + polling no chat; QR câmera pendente) |
 
 Referências: [`docs/requirements.md`](../docs/requirements.md) · [`.cursor/rules/mqtt-chat-project.mdc`](../.cursor/rules/mqtt-chat-project.mdc)

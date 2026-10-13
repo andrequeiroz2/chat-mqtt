@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
+from mqtt_chat.clients.firebase import get_firestore_client
 from mqtt_chat.config.settings import Settings
 from mqtt_chat.logging import events, log_event
 from mqtt_chat.services import telemetry as telemetry_service
+from mqtt_chat.services.adoption import handshake, mqtt_topics
 from mqtt_chat.worker.topics import parse_device_topic
 
 if TYPE_CHECKING:
@@ -21,6 +24,7 @@ async def handle_mqtt_message(
     payload: bytes,
     settings: Settings,
     db: FirestoreClient | None,
+    publish_queue: asyncio.Queue[tuple[str, bytes]] | None = None,
 ) -> None:
     """
     Processa uma mensagem ingestada (telemetry, status, state).
@@ -35,6 +39,31 @@ async def handle_mqtt_message(
         topic=topic,
         payload_bytes=len(payload),
     )
+
+    suffix = mqtt_topics.unclaimed_suffix(topic)
+    if suffix in ("info", "ack"):
+        adoption_db = db or get_firestore_client(settings)
+        if adoption_db is None or publish_queue is None:
+            logger.debug("Adoption MQTT ignored (Firestore or publish queue unavailable)")
+            return
+        topic_mac = mqtt_topics.mac_from_unclaimed_topic(topic)
+        if topic_mac is None:
+            return
+        if suffix == "info":
+            await handshake.handle_info_message(
+                adoption_db,
+                settings,
+                publish_queue,
+                topic_mac=topic_mac,
+                payload_bytes=payload,
+            )
+        else:
+            await handshake.handle_ack_message(
+                adoption_db,
+                topic_mac=topic_mac,
+                payload_bytes=payload,
+            )
+        return
 
     parsed = parse_device_topic(topic)
     if parsed is None:

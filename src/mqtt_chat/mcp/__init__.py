@@ -1,0 +1,1 @@
+"""Integração FastMCP (auth, mount)."""

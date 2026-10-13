@@ -153,3 +153,49 @@ body {
 .api-banner code {
   font-size: 0.85em;
 }
+
+.adopt-panel {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.adopt-panel-title {
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.adopt-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adopt-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.adopt-label input {
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+}
+
+.adopt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.adopt-panel-progress .muted {
+  margin: 0;
+}

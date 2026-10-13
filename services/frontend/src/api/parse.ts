@@ -1,6 +1,17 @@
 import type { ApiErrorBody } from '../types/api'
+import type { AdoptionSession, AdoptionSessionStatus } from '../types/api/adoption'
 import type { ChatResponse } from '../types/api/chat'
 import type { UserProfile } from '../types/api/user'
+
+const SESSION_STATUSES: AdoptionSessionStatus[] = [
+  'started',
+  'device_verified',
+  'config_sent',
+  'awaiting_device_ack',
+  'committed',
+  'failed',
+  'expired',
+]
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -84,6 +95,31 @@ export function assertUserProfile(value: unknown): UserProfile {
 export function assertChatResponse(value: unknown): ChatResponse {
   if (!isChatResponse(value)) {
     throw new Error('invalid_chat_response')
+  }
+  return value
+}
+
+export function isAdoptionSession(value: unknown): value is AdoptionSession {
+  if (!isRecord(value)) {
+    return false
+  }
+  const status = value.session_status
+  return (
+    isString(value.session_id) &&
+    isString(status) &&
+    SESSION_STATUSES.includes(status as AdoptionSessionStatus) &&
+    isString(value.mac_address) &&
+    isString(value.expires_at) &&
+    isOptionalNullableString(value.user_message) &&
+    isOptionalNullableString(value.failure_reason) &&
+    isOptionalNullableString(value.device_id) &&
+    isOptionalNullableString(value.device_name)
+  )
+}
+
+export function assertAdoptionSession(value: unknown): AdoptionSession {
+  if (!isAdoptionSession(value)) {
+    throw new Error('invalid_adoption_session_response')
   }
   return value
 }

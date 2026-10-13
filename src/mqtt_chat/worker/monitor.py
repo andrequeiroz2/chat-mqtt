@@ -158,6 +158,7 @@ async def _try_connect_and_monitor(
                 message.payload,
                 settings,
                 db,
+                ctx.publish_queue,
             )
 
         return False

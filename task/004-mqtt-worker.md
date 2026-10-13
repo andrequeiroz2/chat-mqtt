@@ -55,7 +55,7 @@ Spec desta task **aprovada** para implementação. Fluxo de adoção (§4 do con
 
 | device_app | mqtt-chat PoC worker |
 |------------|----------------------|
-| Subscribe `{broker_uuid}/+/data` e `.../status` | Subscribe `tenants/+/devices/+/telemetry`, `.../status`, `.../state` (adoption/handshake em task futura) |
+| Subscribe `{broker_uuid}/+/data` e `.../status` | Subscribe **permanente** `tenants/+/devices/+/telemetry`, `.../status`, `.../state`. Handshake `unclaimed/...`: **transitório** (task 008 / serviço adoção); **após commit** do device, tráfego `unclaimed` **não** alimenta ingestão — [contrato §4.4](../docs/contracts/device-adoption.md), RF-ADOPT-09 |
 | Persistência SQLite `mqtt_messages` + `sensor_readings` | **Firestore only** — subcoleção `telemetry` (contrato §6.1); atualizar `devices` (`last_seen_at`, `operation_status`); **proibido** SQLite/SQL local |
 | Multi-broker por usuário desktop | **Um** broker plataforma (env / docker-compose); multi-tenant só nos tópicos |
 | Tauri commands Connect/Disconnect | FastAPI **lifespan**: start worker on startup, cancel on shutdown |

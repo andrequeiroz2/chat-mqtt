@@ -29,7 +29,7 @@ Análise e requisitos: seção **Análise e levantamento** abaixo.
 | **6c** | FastMCP + tools IoT + mount HTTP + teste Inspector/Cursor |
 | **6d** | Chat usa MCP in-process; `user_id` nas tools |
 
-**Agora:** **[007-tomatoia-chat-guardrails.md](007-tomatoia-chat-guardrails.md)** (TomatoIA + escopo + persistência) → **6c** → **6d**.
+**Agora:** **[008-device-adoption-handshake-refinement.md](008-device-adoption-handshake-refinement.md)** (contrato device ↔ backend, tópico não adotado + handshake MQTT) → **6c** → **6d**. Guardrails: [007](007-tomatoia-chat-guardrails.md).
 
 ## Entregáveis (fases)
 
@@ -54,16 +54,22 @@ Análise e requisitos: seção **Análise e levantamento** abaixo.
 
 ### Fase 6c — FastMCP IoT
 
-- [ ] `server.py` + `tools/` (glossário)
-- [ ] **Mount HTTP** streamable no FastAPI
-- [ ] `user_id` injetado em toda tool
-- [ ] Teste Cursor / MCP Inspector
+> **Pré-requisito:** contrato adoção **v1.2** aprovado — [008-device-adoption-handshake-refinement.md](008-device-adoption-handshake-refinement.md).
+
+> **Decisão (2026-10-12):** fatia 6c = **somente** `list_devices`; auth **Bearer Firebase** no HTTP MCP; stdio (`mqtt-chat-mcp`) sem auth (dev); chat web integra tools na **6d**.
+
+- [x] `server.py` + `tools/list_devices.py` — contrato [`mcp-list-devices.md`](../docs/contracts/mcp-list-devices.md)
+- [x] **Mount HTTP** streamable em `/api/v1/mcp` (`FirebaseTokenVerifier`)
+- [x] `user_id` via `CurrentAccessToken` / claims Firebase (nunca parâmetro da tool)
+- [ ] Teste manual Cursor / MCP Inspector com Bearer
 
 ### Fase 6d — Integração agente ↔ MCP (opção B)
 
-- [ ] Agent com MCP capability → endpoint MCP interno
-- [ ] Tool calls do chat via protocolo MCP
-- [ ] Propagar identidade do request HTTP para contexto MCP
+> **Decisão (2026-10-13):** v1 = tools Python no agente → mesmo `services/devices.list_devices` que o MCP (sem hop HTTP MCP no chat).
+
+- [x] Tool `list_devices` no Pydantic AI (`agent/device_tools.py`) + `UserDeps.db` / `user_id`
+- [x] System prompt atualizado (listar via tool; adoção só UI)
+- [ ] MCP capability HTTP opcional (mesmo processo) — fase 2 se necessário
 - [ ] (Opcional) `get_user_profile` / `update_user_profile`
 
 ## Fora de escopo (task 006)
@@ -258,7 +264,7 @@ flowchart TB
 | “Mude meu nome para X” | **REST preferível**; tool `update_user_profile` aceitável com validação Pydantic |
 | Excluir conta | **UI + API** com confirmação explícita; **sem** tool no MVP |
 
-| **DECISÃO** | **Prioridade MCP v1:** tools IoT do [`glossary.md`](../docs/glossary.md) (`list_devices`, telemetria, comandos). **Perfil:** no máximo **read/update** finos; **create/delete** de identidade ficam fora do MCP. |
+| **DECISÃO** | **Prioridade MCP v1:** tools IoT do [`glossary.md`](../docs/glossary.md) (`list_devices`, telemetria, comandos). **Inclusão de device:** **somente adoção** (UI/QR) — **sem** `register_device`. **Perfil:** read/update finos; create/delete de identidade fora do MCP. |
 
 Motivos (mcp-builder / segurança):
 

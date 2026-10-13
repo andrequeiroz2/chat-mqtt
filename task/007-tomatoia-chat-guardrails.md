@@ -34,6 +34,8 @@ A 6c **pode** iniciar em paralelo técnico (servidor MCP), mas o **chat exposto 
 |----|-----------|
 | RF-TOM-01 | Toda resposta **in-scope** identifica o assistente como **TomatoIA** na abertura de sessão (primeiro turno ou histórico vazio). |
 | RF-TOM-02 | **In-scope:** adoção/dispositivos, sensores/atuadores, telemetria, broker MQTT (conceito), perfil (`display_name`), orientação de uso da plataforma. |
+| RF-TOM-08 | Falha de adoção: usar **`user_message`** do backend ([contrato §4.5](../docs/contracts/device-adoption.md)); **não** citar `session_id`, MAC, tokens ou senhas. |
+| RF-TOM-09 | Adoção **guiada no chat** (pré-check, QR embarcado, progresso, menu pós-sucesso): ver [009-adoption-guided-chat-ux.md](009-adoption-guided-chat-ux.md); LLM **conversa** + UI **executa** API/MQTT. |
 | RF-TOM-03 | **Out-of-scope:** filmes, artistas, criptomoedas/preços, notícias gerais, tarefas escolares genéricas, código arbitrário sem ligação IoT, etc. |
 | RF-TOM-04 | **Out-of-scope:** resposta **fixa** (texto acordado abaixo); **sem** `append_turn` no Firestore. |
 | RF-TOM-05 | **In-scope:** persiste par user/assistant como hoje (`CHAT_MAX_TURNS`). |

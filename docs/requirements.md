@@ -162,21 +162,13 @@ A PoC deve manter **contratos estáveis** (nomes de tools, JSON de telemetria, c
 - **MVP/produção:** manter Mosquitto; adicionar **TLS**, usuários/senhas ou certificados por dispositivo, e **ACL** alinhadas aos tópicos `tenants/{user_id}/devices/{device_id}/...`.
 - **Artefatos previstos:** `docker/mosquitto/mosquitto.conf`, `docker/mosquitto/acl` (ou `password_file`), volume para persistência opcional de mensagens retain.
 
-### 4.2 Cadastro de dispositivo vs provisionamento MQTT
+### 4.2 Registro de dispositivo (adoção) vs provisionamento MQTT
 
-Não é uma “dúvida aberta” — são **duas etapas** do ciclo de vida do hardware. A tabela PoC/MVP só diz *quanto* de cada etapa entra em cada fase.
+No **MVP**, **registro lógico** e **entrada na conta** são a **mesma coisa**: **adoção** (QR + handshake + commit) — ver [`docs/contracts/device-adoption.md`](contracts/device-adoption.md). **Não** há tool MCP `register_device` nem API alternativa para “criar” device; o chat **orienta** o usuário à UI de adoção.
 
-#### Cadastro (registro lógico)
+Metadados editáveis **depois** do commit: `update_device` (nome, etc.). Remoção: `remove_device`.
 
-O usuário (ou o chat via tool) **declara** que existe um dispositivo e que ele é dono dele. Isso grava **metadados** no Firestore, por exemplo:
-
-- `device_id`, nome, tipo (`sensor` / `actuator`), modelo, local
-- prefixo de tópicos MQTT (`tenants/{user_id}/devices/{device_id}/...`)
-- specs (`parameter_ranges`, `command_spec`) — alinhado ao `device_app`
-
-**Na PoC isso basta** para listar devices no chat, associar telemetria ao `device_id` e mandar comandos — usando um **único usuário/senha MQTT compartilhado** no Mosquitto de dev (ou broker aberto só local).
-
-Tools típicas (nomes em inglês — ver glossário): `register_device`, `list_devices`, `update_device`, `remove_device`.
+**PoC legado (simulador):** flags/`device_id` fixos e broker compartilhado serviram só para validar MQTT + worker; **não** substituem o modelo de produção.
 
 #### Provisionamento (identidade no broker)
 
@@ -200,16 +192,10 @@ sequenceDiagram
   participant Mosq as Mosquitto
   participant ESP as Embarcado
 
-  Note over User,FS: PoC — cadastro
-  User->>Chat: Cadastre sensor da sala
-  Chat->>API: tool register_device
-  API->>FS: grava metadados device_id
-
-  Note over ESP,Mosq: PoC — conexao simples
-  ESP->>Mosq: connect user_dev senha_dev
+  Note over ESP,Mosq: PoC legado — simulador credencial compartilhada
   ESP->>Mosq: publish telemetry
 
-  Note over User,Mosq: MVP — adoção por QR
+  Note over User,Mosq: MVP — unico registro via adoção QR
   User->>API: POST adopt/start claim_token
   API->>API: adoption_session valida contrato
   API->>ESP: config proposta handshake
@@ -219,7 +205,7 @@ sequenceDiagram
   ESP->>Mosq: connect telemetria normal
 ```
 
-**Resumo:** cadastro = “este sensor existe e é meu”; provisionamento = “este chip **é** aquele sensor no broker, com senha e ACL”. **Adoção preferida:** usuário escaneia **QR code** (§4.3). PoC começa sem QR (cadastro manual/simulador); MVP inclui fluxo de scan.
+**Resumo:** **adoção (MVP)** = registro na conta + commit Firestore + credenciais/ACL MQTT; provisionamento = chip autenticado no broker com tópicos daquele `device_id`. PoC usou simulador sem QR; **produto:** scan §4.3.
 
 ### 4.3 Adoção por QR code (decisão de produto)
 
@@ -229,9 +215,9 @@ O **proprietário** passa a ser dono do dispositivo escaneando um **QR code** im
 |---------|-----------|
 | Quem lê o QR | **Usuário autenticado** no frontend web (não o LLM — a câmera é UI; o chat pode orientar: “Abra Adotar dispositivo e escaneie o QR”) |
 | Conteúdo do QR | **MVP:** deep link `https://<app>/adopt?t=<claim_token>` (QR-C). **Alternativa dev/fábrica:** só `mac_address`. Detalhes: [`docs/contracts/device-adoption.md`](contracts/device-adoption.md) §3. |
-| `claim_token` | Uso **único**, TTL curto (ex.: 15–30 min); gerado no factory ou quando o device entra em modo pareamento |
+| `claim_token` | Opaco no QR; **`bound`** enquanto placa adotada; **reutilizável** após remoção da conta + reset (outro `user_id`). Sessão de adoção: TTL §4.5 contrato (`ADOPTION_HANDSHAKE_TIMEOUT_SEC`) |
 | Backend | Sessão de adoção → valida contrato e posse → handshake até `adoption_ack` → **só então** grava `devices`, ACL Mosquitto e credenciais (§4.2; contrato §4) |
-| Pós-scan | Opções a detalhar no firmware: **WiFi provisioning** (SoftAP / SmartConfig / BLE) + envio das cred MQTT; ou device já online e recebe credenciais em tópico `.../provision` assinado após adoção |
+| Pós-scan | **WiFi provisioning** (SoftAP / BLE / serial): **escopo firmware**, não backend v1 ([`device-adoption.md`](contracts/device-adoption.md) §7.1). Backend envia credenciais **MQTT** no handshake `.../config`; device deve já alcançar o broker (rede provisionada pelo embarcado). |
 
 ```mermaid
 flowchart LR
@@ -264,7 +250,7 @@ flowchart LR
 **Segurança mínima**
 
 - Token assinado (HMAC/JWT) ou lookup opaco no Firestore.
-- Após adoção, invalidar `claim_token`; rotacionar credencial MQTT se vazamento suspeito.
+- Após commit, token **`bound`** (impede segunda adoção simultânea da mesma placa); após `remove_device` + reset, mesmo QR pode reabrir adoção. Rotacionar credencial MQTT se vazamento suspeito.
 - QR de fábrica pode ser reimpresso só com reset físico no device (botão factory reset).
 
 ---
@@ -350,13 +336,14 @@ Padrões detalhados: copiar/adaptar de `~/DEV/mcp/mcp-sport/docs/Architectural_D
 
 Todas com validação Pydantic e erros tipados (`device_not_found`, `timeout`, `no_data`).
 
-1. `list_devices`
-2. `register_device(name, device_type, topic_prefix?)` — `device_type`: `sensor` \| `actuator`
+1. `list_devices` — devices **já adotados** (inclusão **somente** via adoção UI — §4.2)
+2. `update_device(device_id, ...)` — metadados pós-adoção
 3. `remove_device(device_id)`
-4. `update_device(device_id, ...)`
-5. `read_latest_telemetry(device_id, metric?)`
-6. `publish_command(device_id, command)` — exige `device_type == actuator`
-7. `get_telemetry_history(device_id, metric, start, end)` — alimenta gráfico
+4. `read_latest_telemetry(device_id, metric?)`
+5. `publish_command(device_id, command)` — exige `device_type == actuator`
+6. `get_telemetry_history(device_id, metric, start, end)` — alimenta gráfico
+
+**Fora do MCP MVP:** `register_device` — não criar device pelo chat; ver [`glossary.md`](glossary.md).
 
 **Isolamento (MVP):** injetar contexto do usuário autenticado em toda chamada MCP; o agente só acessa dispositivos do proprietário.
 

@@ -6,6 +6,9 @@ import { formatAuthError } from '../app/auth-error-messages'
 import { CHAT_MESSAGE_MAX_LENGTH } from '../types/api'
 import type { ChatMessage } from '../types/chat-ui'
 import { getOrCreateChatSessionId } from './session'
+import { AdoptWizardPanel, type AdoptWizardPhase } from './adopt/AdoptWizardPanel'
+import { isAdoptionIntent } from './adopt/intent'
+import { POST_SUCCESS_MENU, PRECHECK_ASSISTANT } from './adopt/progressCopy'
 
 export function ChatScreen() {
   const { profile, api, actions } = useSignedInAuth()
@@ -13,8 +16,20 @@ export function ChatScreen() {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [adoptPhase, setAdoptPhase] = useState<AdoptWizardPhase | null>(null)
 
   const sessionId = getOrCreateChatSessionId()
+
+  const appendAssistant = useCallback((text: string) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), role: 'assistant', text },
+    ])
+  }, [])
+
+  const closeAdoptWizard = useCallback(() => {
+    setAdoptPhase(null)
+  }, [])
 
   const onSubmit = useCallback(
     async (event: SubmitEvent<HTMLFormElement>) => {
@@ -35,6 +50,13 @@ export function ChatScreen() {
       }
       setMessages((prev) => [...prev, userMsg])
 
+      if (isAdoptionIntent(text) && adoptPhase === null) {
+        appendAssistant(PRECHECK_ASSISTANT)
+        setAdoptPhase('precheck')
+        setSending(false)
+        return
+      }
+
       try {
         const { reply } = await api.postChat({ message: text, session_id: sessionId })
         setMessages((prev) => [
@@ -48,8 +70,12 @@ export function ChatScreen() {
         setSending(false)
       }
     },
-    [api, draft, sending, sessionId],
+    [api, adoptPhase, appendAssistant, draft, sending, sessionId],
   )
+
+  const handleAdoptTerminal = useCallback(() => {
+    appendAssistant(POST_SUCCESS_MENU)
+  }, [appendAssistant])
 
   return (
     <div className="chat-shell">
@@ -75,6 +101,21 @@ export function ChatScreen() {
           </li>
         ))}
       </ul>
+
+      {adoptPhase !== null && (
+        <AdoptWizardPanel
+          api={api}
+          phase={adoptPhase}
+          onPhaseChange={(phase, meta) => {
+            setAdoptPhase(phase)
+            if (phase === 'done' && meta?.committed) {
+              handleAdoptTerminal()
+            }
+          }}
+          onAssistantLine={appendAssistant}
+          onClose={closeAdoptWizard}
+        />
+      )}
 
       {error && <p className="chat-error">{error}</p>}
 

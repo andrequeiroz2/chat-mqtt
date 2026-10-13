@@ -1,8 +1,10 @@
 import { apiBaseUrl } from '../config/env'
+import type { AdoptionSession, AdoptionStartRequest } from '../types/api/adoption'
 import type { ChatRequest, UserProfile, UserProfileUpdateRequest } from '../types/api'
 import type { ChatResponse } from '../types/api/chat'
 import { API_PATHS } from './paths'
 import {
+  assertAdoptionSession,
   assertChatResponse,
   assertUserProfile,
   parseApiErrorBody,
@@ -78,6 +80,22 @@ export function createApiClient(getAccessToken: () => Promise<string | null>) {
           method: 'POST',
           body: JSON.stringify(body),
         }),
+      ),
+
+    postAdoptStart: async (body: AdoptionStartRequest): Promise<AdoptionSession> =>
+      assertAdoptionSession(
+        await requestJson(API_PATHS.adoptStart, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }),
+      ),
+
+    getAdoptionSession: async (sessionId: string): Promise<AdoptionSession> =>
+      assertAdoptionSession(await requestJson(API_PATHS.adoptSession(sessionId))),
+
+    cancelAdoptionSession: async (sessionId: string): Promise<AdoptionSession> =>
+      assertAdoptionSession(
+        await requestJson(API_PATHS.adoptCancel(sessionId), { method: 'POST' }),
       ),
   }
 }

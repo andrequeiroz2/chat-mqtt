@@ -58,6 +58,7 @@ def _user_deps(
         user_id=user.user_id,
         display_name=profile.display_name,
         session_id=session_id,
+        db=db,
     )
 
 

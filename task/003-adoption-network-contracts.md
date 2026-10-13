@@ -92,6 +92,7 @@ Detalhes, tabelas e exemplos JSON: ver contrato v1.1.
 | ID | Arquivo | Conteúdo |
 |----|---------|----------|
 | 004 | [004-mqtt-worker.md](004-mqtt-worker.md) | Worker: assinar telemetria conforme contrato, persistir Firestore |
+| 008 | [008-device-adoption-handshake-refinement.md](008-device-adoption-handshake-refinement.md) | Refino v1.2: tópico `unclaimed`, handshake device-centric, anti-fake (referência device_app) |
 
 ---
 

@@ -11,7 +11,7 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | Contexto | Idioma | Exemplo |
 |----------|--------|---------|
 | Documentação, comentários, docstrings | **Português** | “Registra o dispositivo do usuário no Firestore.” |
-| Classes, funções, variáveis, tools MCP, campos JSON | **Inglês** | `register_device`, `device_type`, `user_id` |
+| Classes, funções, variáveis, tools MCP, campos JSON | **Inglês** | `list_devices`, `device_type`, `user_id` |
 
 ---
 
@@ -38,9 +38,9 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | **Comando** | `command` | Ordem ao atuador. Tópico: `.../commands`. |
 | **Estado** / **ACK** | `state` | Confirmação ou estado reportado pelo device. Tópico: `.../state`. |
 | **Proprietário** | `owner` / `user_id` | Usuário associado ao device após cadastro ou adoção. |
-| **Adoção** | `adoption` / `adopt` | Fluxo MVP: QR → sessão → validação de contrato → ack do device → **commit** (`user_id`, Firestore, MQTT). Ver [`docs/contracts/device-adoption.md`](contracts/device-adoption.md) §4. |
+| **Adoção** | `adoption` / `adopt` | **Única forma** de **incluir** um device na conta do usuário (registro lógico + commit Firestore/MQTT). QR → sessão → handshake → ack → commit. Ver [`docs/contracts/device-adoption.md`](contracts/device-adoption.md) §4. **Não** existe cadastro paralelo via chat/MCP. |
 | **Sessão de adoção** | `adoption_session` | Estado transitório (TTL) em `adoption_sessions`; **não** substitui documento em `devices`. |
-| **Token de adoção** | `claim_token` | String de uso único no QR; **não** é senha MQTT. |
+| **Token de adoção** | `claim_token` | String opaca no QR; **não** é senha MQTT. Estado **`bound`** enquanto device adotado; **pode** reutilizar após remoção/reset (contrato §3.2). |
 | **Provisionamento** | `provisioning` | Criação de credenciais MQTT + ACL no Mosquitto após adoção. |
 | **Inquilino** (multi-tenant) | `tenant` | Namespace lógico; na PoC pode coincidir com `user_id`. Tópico: `tenants/{user_id}/...`. |
 
@@ -62,15 +62,16 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 
 | Tool (inglês) | Ação em português (docstring / UX) |
 |---------------|-------------------------------------|
-| `list_devices` | Listar dispositivos do usuário |
-| `register_device` | Cadastrar dispositivo (metadados) |
-| `update_device` | Atualizar dispositivo |
-| `remove_device` | Remover dispositivo |
+| `list_devices` | Listar dispositivos do usuário (somente já adotados) — contrato: [`docs/contracts/mcp-list-devices.md`](contracts/mcp-list-devices.md) |
+| `update_device` | Atualizar metadados de device **já adotado** (ex.: nome amigável) |
+| `remove_device` | Remover device da conta (libera re-adoção — contrato §3.2) |
 | `read_latest_telemetry` | Ler última telemetria |
 | `publish_command` | Publicar comando (actuator) |
 | `get_telemetry_history` | Obter histórico para gráfico |
 | `get_user_profile` | Ler perfil do usuário autenticado (opcional; preferir deps para saudação) |
 | `update_user_profile` | Atualizar campos permitidos do perfil (ex.: `display_name`) |
+
+**Não expor no MCP (MVP):** `register_device` — **não** cria device. Inclusão **somente** via **adoção** (UI + QR); o LLM **orienta** o usuário à tela de adoção (RF-ADOPT-03). PoC com simulador/cadastro manual **não** é modelo de produção.
 
 ---
 
@@ -93,6 +94,7 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | 2026-10-09 | Versão inicial: user/device, MQTT/broker, `device_type` ∈ {`sensor`, `actuator`} |
 | 2026-10-10 | `mac_address`, `mqtt_topic_base`, `adoption_status`; link contrato adoção v1 |
 | 2026-10-10 | `adoption_session`; fluxo commit tardio (contrato v1.1) |
+| 2026-10-12 | Adoção = único registro de device; `register_device` fora do MCP MVP |
 | 2026-10-10 | Telemetria: persistência Firestore only (sem espelho `mqtt_messages`) |
 | 2026-10-10 | `identity_provider`, `user_profile`; tools opcionais de perfil (task 006) |
 | 2026-10-11 | **TomatoIA** — assistente/marca (task 007) |

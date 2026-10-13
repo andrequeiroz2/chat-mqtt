@@ -19,6 +19,8 @@ INGEST_SUBSCRIPTIONS: tuple[tuple[str, int], ...] = (
     ("tenants/+/devices/+/telemetry", 1),
     ("tenants/+/devices/+/status", 1),
     ("tenants/+/devices/+/state", 1),
+    ("unclaimed/devices/+/info", 1),
+    ("unclaimed/devices/+/ack", 1),
 )
 
 

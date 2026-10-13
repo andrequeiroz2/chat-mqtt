@@ -12,8 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from mqtt_chat.config.settings import get_settings
 from mqtt_chat.logging import events, log_event
 from mqtt_chat.logging.bootstrap import setup_logging_from_settings
+from mqtt_chat.api.routes import adopt as adopt_routes
 from mqtt_chat.api.routes import chat as chat_routes
 from mqtt_chat.api.routes import me as me_routes
+from mqtt_chat.server import build_mcp_server
 from mqtt_chat.worker.monitor import WorkerHealth, run_with_reconnect
 
 logger = logging.getLogger(__name__)
@@ -69,6 +71,12 @@ app.add_middleware(
 )
 app.include_router(me_routes.router)
 app.include_router(chat_routes.router)
+app.include_router(adopt_routes.router)
+
+_mcp_settings = get_settings()
+_mcp = build_mcp_server(_mcp_settings, auth_enabled=True)
+_mcp_http = _mcp.http_app(path="/", transport="streamable-http")
+app.mount("/api/v1/mcp", _mcp_http)
 
 
 @app.get("/health")

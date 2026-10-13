@@ -55,6 +55,14 @@ class Settings(BaseSettings):
         validation_alias="CHAT_MAX_TURNS",
     )
 
+    adoption_handshake_timeout_sec: int = Field(
+        default=300,
+        ge=60,
+        le=3600,
+        validation_alias="ADOPTION_HANDSHAKE_TIMEOUT_SEC",
+        description="TTL da adoption_session e janela do handshake MQTT (default 5 min).",
+    )
+
     @property
     def chat_max_messages(self) -> int:
         """Máximo de documentos em messages/ (1 turno = user + assistant)."""

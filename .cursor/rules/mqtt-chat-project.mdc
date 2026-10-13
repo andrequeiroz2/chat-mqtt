@@ -126,13 +126,13 @@ src/mqtt_chat/
 | Comentários no código | **Português** |
 | Código executável (corpo de funções, expressões) | **Inglês** onde for idioma natural do código (mensagens de log técnicas podem ser inglês) |
 | Nomes de classes, funções, métodos, variáveis, módulos, pacotes | **Inglês** (`snake_case` / `PascalCase` PEP 8) |
-| Nomes de tools MCP expostas ao LLM | **Inglês** (`list_devices`, `register_device`) — docstring da tool em **português** |
+| Nomes de tools MCP expostas ao LLM | **Inglês** (`list_devices`, `update_device`, …) — docstring da tool em **português** |
 | Contratos JSON/Firestore/MQTT (campos de payload) | **Inglês** (`device_id`, `claim_token`) |
 
 - **NUNCA** nomear classes ou funções em português (ex.: proibido `CadastrarDispositivo`, `listar_dispositivos` como def Python).
 - **NUNCA** escrever docstrings ou comentários explicativos em inglês, salvo citação literal de spec/API externa.
 - **DEVE** escrever docstrings de tools MCP em português: é a interface que orienta o modelo e o time.
-- **DEVE** alinhar nomes de tools MCP à tabela em [`docs/glossary.md`](docs/glossary.md) (ex.: `list_devices`, `register_device`).
+- **DEVE** alinhar nomes de tools MCP à tabela em [`docs/glossary.md`](docs/glossary.md) (ex.: `list_devices`, `update_device`). **NUNCA** expor tool que **crie** device — inclusão **somente** via adoção (UI).
 - **DEVE** atualizar o glossário **antes** de introduzir novo termo de domínio no código ou na documentação.
 
 

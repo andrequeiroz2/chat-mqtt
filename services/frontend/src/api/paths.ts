@@ -4,4 +4,9 @@ export const API_PATHS = {
   me: '/api/v1/me',
   chat: '/api/v1/chat',
   chatStream: '/api/v1/chat/stream',
-} as const satisfies Record<string, `/api/v1/${string}`>
+  adoptStart: '/api/v1/devices/adopt/start',
+  adoptSession: (sessionId: string) =>
+    `/api/v1/devices/adopt/sessions/${encodeURIComponent(sessionId)}`,
+  adoptCancel: (sessionId: string) =>
+    `/api/v1/devices/adopt/sessions/${encodeURIComponent(sessionId)}/cancel`,
+} as const

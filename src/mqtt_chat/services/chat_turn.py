@@ -50,6 +50,7 @@ async def execute_chat_turn(
         user_id=deps.user_id,
         display_name=deps.display_name,
         session_id=deps.session_id,
+        db=deps.db,
         history_empty=len(history) == 0,
     )
     raw = await run_chat(agent, deps_with_history, user_message, history)

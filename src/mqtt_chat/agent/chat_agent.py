@@ -9,6 +9,7 @@ from pydantic_ai.providers import infer_provider
 from pydantic_ai.providers.google import GoogleProvider
 
 from mqtt_chat.agent.deps import UserDeps
+from mqtt_chat.agent.device_tools import register_device_tools
 from mqtt_chat.agent.tomato_ia import ASSISTANT_NAME
 from mqtt_chat.config.settings import Settings
 from mqtt_chat.schemas.chat import ChatTurnResult
@@ -32,7 +33,10 @@ def _build_system_prompt(display_name: str, *, history_empty: bool) -> str:
         "notícias gerais, tarefas escolares sem ligação IoT, entretenimento, política, receitas, etc. "
         "Para off_topic, defina scope=off_topic; o campo reply será ignorado pelo backend. "
         "Para product, preencha reply com a resposta útil. "
-        "Não invente devices ou telemetria — sem tools ainda, diga que em breve haverá consulta aos devices do usuário. "
+        "Para listar ou filtrar devices já adotados (todos, sensores, atuadores, por nome), "
+        "use a tool list_devices — nunca invente devices ou telemetria. "
+        "Para adicionar um device à conta, oriente o usuário ao fluxo de adoção na interface "
+        "(QR / pareamento no chat); você não executa adoção. "
         "Mencione o nome TomatoIA quando natural na resposta in-scope."
     )
 
@@ -73,6 +77,7 @@ def create_chat_agent(settings: Settings) -> Agent[UserDeps, ChatTurnResult]:
             history_empty=ctx.deps.history_empty,
         )
 
+    register_device_tools(agent)
     return agent
 
 

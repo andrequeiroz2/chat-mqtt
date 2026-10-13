@@ -2,9 +2,9 @@
 
 | Campo | Valor |
 |-------|--------|
-| Versão | **v1.1** |
+| Versão | **v1.1** (+ **v1.2-dev** UC-A — ver §3.4, §4.2.1) |
 | Status | **Rascunho normativo** — aguardando aprovação humana |
-| Task | [003-adoption-network-contracts.md](../../task/003-adoption-network-contracts.md) |
+| Task | [003-adoption-network-contracts.md](../../task/003-adoption-network-contracts.md) · refinamento v1.2: [008-device-adoption-handshake-refinement.md](../../task/008-device-adoption-handshake-refinement.md) |
 | Glossário | [`docs/glossary.md`](../glossary.md) |
 | Requirements | [`docs/requirements.md`](../requirements.md) §4.2–4.3, §5 |
 
@@ -14,7 +14,7 @@ Este documento **prevalece** sobre rascunhos soltos em requirements para tópico
 
 ## 1. Objetivo e princípios
 
-1. **UX mínima:** usuário autenticado escaneia QR na web; o backend conduz pareamento até o device confirmar; só então o device aparece na conta do usuário.
+1. **UX mínima:** usuário autenticado escaneia QR na web; o backend conduz pareamento até o device confirmar; só então o device aparece na conta do usuário. **Adoção = registro:** a **única** forma de **adicionar** um device à conta é este fluxo — **sem** tool MCP, **sem** API “cadastrar device” fora de `adopt/*` no MVP.
 2. **Commit tardio na base:** o documento canônico em **`devices` (Firestore)** é criado **somente** quando, em conjunto:
    - o device **cumpre o contrato** (metadados, payloads, MAC coerente com o QR/sessão);
    - **não** existe registro adotado do mesmo `mac_address` para **outro** `user_id` (e o firmware não reporta adoção prévia a outro dono);
@@ -25,6 +25,8 @@ Este documento **prevalece** sobre rascunhos soltos em requirements para tópico
    - **`mqtt_topic_base`** — prefixo MQTT **único** persistido; usado por worker, ACL e firmware pós-adoção.
 4. **QR não carrega senha MQTT** nem credenciais WiFi.
 5. **Multi-tenant desde o desenho:** namespace `tenants/{user_id}/devices/{device_id}/...` (mantido da PoC).
+6. **Transporte device ↔ plataforma (MVP):** handshake de adoção, config proposta, ack e tráfego operacional (telemetria, comandos, status) são **somente MQTT** via Mosquitto. A UI e a API usam **HTTP** para o usuário autenticado (`/devices/adopt/*`, etc.); o backend **orquestra** a sessão e publica/assina no broker — **sem** REST exposto ao firmware para adoção na v1. Serial USB (referência device_app) **não** faz parte do fluxo web MVP.
+7. **WiFi provisioning (SSID/senha, SoftAP, BLE, serial):** **fora do escopo do backend mqtt-chat v1**. Será definido e implementado no **projeto firmware/device** quando o embarcado for desenvolvido. O handshake MQTT **não substitui** WiFi: o backend **assume** que o device já alcança o broker (ou que o firmware provisionou rede **antes** de participar do handshake). Payload `.../config` do backend envia **somente** parâmetros MQTT + identidade (§6.6), **sem** `wifi_ssid` / `wifi_password` na v1.
 
 Durante o pareamento, estado fica em **`adoption_sessions`** (TTL). Inventário de fábrica (`factory_inventory`), se existir, **não** substitui `devices` nem implica proprietário.
 
@@ -58,7 +60,7 @@ Registro **definitivo** do device adotado. **Não** criar documento aqui no scan
 
 ### 2.2 Coleção `adoption_sessions` (transitória)
 
-Estado **em andamento** entre scan do QR e commit. TTL curto (ex.: 15–30 min); documento **apagado ou arquivado** após sucesso ou expiração.
+Estado **em andamento** entre scan do QR e commit. Tolerância de handshake configurável (§4.5, default **5 min**); documento **apagado ou arquivado** após sucesso, falha ou expiração.
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
@@ -71,14 +73,25 @@ Estado **em andamento** entre scan do QR e commit. TTL curto (ex.: 15–30 min);
 | `contract_validation` | object | Resultado das checagens (schema, tipos, ranges) |
 | `proposed_device_id` | string (UUID) | Gerado na sessão; usado no commit se ainda não existir em `devices` |
 | `proposed_mqtt_topic_base` | string | Calculado antes do envio ao firmware |
-| `expires_at` | timestamp | |
-| `failure_reason` | string \| null | Código/mensagem se `failed` |
+| `expires_at` | timestamp | `started_at` + tolerância de handshake (§4.5) |
+| `failure_reason` | string \| null | Código **interno** (logs, suporte) — ex.: `handshake_timeout`, `ownership_conflict` — **não** expor ao usuário |
+| `user_message` | string \| null | Texto **PT**, curto, seguro para UI/chat se `failed` ou `expired` (§4.5) |
 
 **Não** usar `adoption_sessions` para listagem de devices do usuário nem para ingestão de telemetria.
 
 ### 2.3 Coleção `factory_inventory` (opcional, pré-venda)
 
 Vínculo fábrica **MAC ↔ `claim_token`** (e metadados estáticos: `model`, lote). **Sem** `user_id`. Não equivale a device adotado.
+
+Estado sugerido do token (não confundir com “queimado para sempre”):
+
+| `claim_token_status` | Significado |
+|----------------------|-------------|
+| `available` | Pode iniciar adoção (device não adotado ou elegível a re-adoção — §3.2) |
+| `adoption_in_progress` | Sessão ativa; outro `adopt/start` com o mesmo token → rejeitar ou retomar política única |
+| `bound` | Commit OK; device consta em `devices` — **não** iniciar nova adoção para outro `user_id` até **liberação** (remoção + reset, §3.2) |
+
+O **mesmo** `claim_token` do sticker **pode** voltar a `available` após `remove_device` (conta anterior) **e** factory reset / firmware `adopted_status = 0`, para outro usuário adotar a **mesma placa**.
 
 ### 2.4 O que é “único no banco”
 
@@ -130,28 +143,42 @@ Durante `adoption_sessions`, `proposed_device_id` é provisório até o commit; 
 | QR-C | Deep link `https://<app>/adopt?t=<claim_token>` | Produto MVP | **Preferido** |
 | QR-D | MAC + topic | — | **Rejeitado** (redundante, QR maior) |
 
-### 3.2 Decisão MVP (QR-C)
+### 3.2 Decisão MVP — fases
+
+| Fase | QR / lookup | Prefixo handshake |
+|------|-------------|-------------------|
+| **v1.2-dev (implementação atual)** | **QR-A** — `mac_address` em `POST /devices/adopt/start` (ou simulador) | **UC-A:** `unclaimed/devices/{mac_normalized}` |
+| **Produção (posterior)** | **QR-C** — deep link + `claim_token` + **`factory_inventory`** | **UC-B:** secret de fábrica (§3.1) |
+
+#### QR-C (produto alvo)
 
 - Sticker ou tela de pareamento expõe **URL com `claim_token` opaco**.
 - Lookup do token em **`factory_inventory`** ou validação criptográfica — **sem** criar documento em `devices`.
 - Scan inicia **`adoption_session`**; MAC vem do inventário ou do handshake com o device.
 - **Commit** (documento em `devices` + ACL Mosquitto + credenciais definitivas) **somente** após §4.
 
+**`claim_token` — ciclo de vida (não é uso único vitalício):**
+
+- Enquanto o device **está adotado** em `devices`, o token fica **`bound`** — impede segunda conta adotar a mesma placa (RF-ADOPT-04).
+- **Após commit bem-sucedido:** marcar token **`bound`** (invalida **nova** adoção paralela com aquele token até liberação); **não** apagar o token da fábrica como se o QR deixasse de existir.
+- **Re-adoção (outro `user_id`):** permitida somente se o device **não** estiver adotado — ex.: proprietário anterior fez **`remove_device`**, firmware em fábrica/reset, documento `devices` removido ou arquivado conforme política MVP. Então o **mesmo** QR/`claim_token` **pode** iniciar nova sessão (`available`).
+- **Falha / timeout / abort** (§4.5): token **não** passa a `bound`; permanece **`available`** (ou volta de `adoption_in_progress`).
+
 ### 3.3 Alternativa QR-A (dev / fábrica mínima)
 
 - QR contém apenas MAC; sessão exige usuário autenticado + **ausência** de `devices` adotado com esse MAC para outro `user_id`.
 - **Risco:** MAC enumerável — mitigar com rate limit, confirmação na UI e evolução para QR-C antes de produção.
 
-### 3.4 Tópico pré-adoção (QR-B, opcional)
+### 3.4 Tópico pré-adoção — **UC-A (v1.2-dev)**
 
-Se o firmware publicar **antes** da adoção:
+| Fase | Prefixo | Notas |
+|------|---------|--------|
+| Pré-adoção | `unclaimed/devices/{mac_normalized}` | `mac_normalized` = 12 hex **uppercase**, sem `:` (ex.: `3C71BF4DDB0C`) |
+| Pós-adoção | `tenants/{user_id}/devices/{device_id}` | = `mqtt_topic_base`; firmware **must** migrar após ack (§4.4) |
 
-| Fase | `mqtt_topic_base` / prefixo | Notas |
-|------|------------------------------|--------|
-| Pré-adoção | `unclaimed/devices/{mac_normalized}` | `mac_normalized` = 12 hex uppercase, sem `:` |
-| Pós-adoção | `tenants/{user_id}/devices/{device_id}` | Firmware **must** reprovisionar via `set_config` ou equivalente |
+**Anti-fake v1.2-dev (sem inventário):** **`factory_inventory` não é obrigatório.** Validações mínimas: usuário autenticado; `mac_address` na sessão; MAC em `.../info` **igual** ao da sessão; `session_id` / **nonce** em config/ack; TTL §4.5; firmware `adopted_status` coerente (RF-ADOPT-04/05). **RF-ADOPT-07 completo** (token ↔ fábrica) entra com **QR-C / UC-B**.
 
-Sufixos pré-adoção podem ser os mesmos (`telemetry`, `status`, …) sob o prefixo `unclaimed/...`. Worker MVP pode **ignorar** `unclaimed/` até política de ingestão pré-adoção ser definida.
+Telemetria operacional **não** persiste sob `unclaimed/`; worker usa `unclaimed/.../info` e `.../ack` só para handshake (§4.2.1).
 
 ---
 
@@ -209,16 +236,21 @@ Se a sessão expirar ou o ack não chegar a tempo → **nenhum** documento novo 
 
 ### 4.2 Canal MQTT de adoção (handshake)
 
-Prefixo transitório (exemplo): `adoption/sessions/{session_id}/`.
+#### 4.2.1 Canônico v1.2-dev — prefixo **UC-A**
 
-| Tópico | Direção | Uso |
-|--------|---------|-----|
-| `.../challenge` | Backend → device | Solicita `device_info` / nonce |
-| `.../info` | Device → backend | Payload §6.5 + `session_id` |
-| `.../config` | Backend → device | §6.6 (proposta) |
-| `.../ack` | Device → backend | §6.7 confirmação |
+Base: `{unclaimed_topic_base}` = `unclaimed/devices/{mac_normalized}`.
 
-Alternativa equivalente: tópico `unclaimed/devices/{mac_normalized}/adoption/...` **desde que** o commit em `devices` continue **após** o ack. Detalhe de transporte WiFi permanece task futura.
+| Tópico completo | Direção | Uso |
+|-----------------|---------|-----|
+| `{base}/announce` | Device → broker | Presença opcional (retain); MAC, firmware |
+| `{base}/challenge` | Backend → device | `session_id`, `nonce` |
+| `{base}/info` | Device → backend | §6.5 + `session_id`; worker entrega ao serviço de adoção |
+| `{base}/config` | Backend → device | §6.6 (proposta + nonce) |
+| `{base}/ack` | Device → backend | §6.7 — dispara commit |
+
+**Deprecated (não implementar v1.2-dev):** `adoption/sessions/{session_id}/...` (rascunho v1.1).
+
+WiFi: §1 princípio 7 / §7.1 (firmware, não backend).
 
 ### 4.3 APIs (MVP)
 
@@ -231,6 +263,71 @@ Alternativa equivalente: tópico `unclaimed/devices/{mac_normalized}/adoption/..
 O **commit** é acionado pelo backend ao processar `adoption_ack` válido (não expor rota pública de commit sem ack).
 
 **RF-ADOPT-03 (mantido):** o chat **orienta**; o scan é **somente** na UI (não tool LLM).
+
+Respostas de `GET .../sessions/{session_id}` (e eventos SSE, se houver) **must** incluir `user_message` quando `session_status` ∈ `failed` | `expired` — ver §4.5.
+
+### 4.5 Tolerância de tempo, abort e mensagens ao usuário
+
+#### Tolerância (handshake)
+
+- A janela única da sessão começa em **`POST /devices/adopt/start`** (`started_at`).
+- **`expires_at`** = `started_at` + **`ADOPTION_HANDSHAKE_TIMEOUT_SEC`** (env backend; default **300** = 5 minutos).
+- Se `now > expires_at` antes do commit → `session_status`: **`expired`**; tratar como falha (abort §4.5.2).
+- Mensagens MQTT ou HTTP **após** expiração **must not** provocar commit; ignorar ou responder falha interna.
+
+Configuração: [`Settings`](../src/mqtt_chat/config/settings.py) / [`.env.example`](../.env.example) — `ADOPTION_HANDSHAKE_TIMEOUT_SEC`.
+
+#### Abort em qualquer erro (sem registro parcial)
+
+Qualquer falha no fluxo §4.1 (elegibilidade, contrato, timeout, ack inválido, cancelamento, erro Mosquitto **antes** do commit) **must**:
+
+1. **Não** criar nem atualizar documento em **`devices`** (commit tardio mantido).
+2. Marcar `adoption_sessions` como **`failed`** ou **`expired`** com `failure_reason` interno (inglês, snake_case).
+3. **Não** aplicar ACL/credenciais MQTT **definitivas** no Mosquitto se a política for “ACL só no commit”; se credencial temporária foi criada, **revogar** ou deixar expirar sem vincular a `devices`.
+4. **Não** marcar `claim_token` como **`bound`** (falha/abort/timeout); token volta ou permanece **`available`** para nova tentativa (RF-ADOPT-02).
+5. Parar publicação MQTT de `challenge`/`config` para aquela sessão.
+
+**Nunca** deixar “meio device” na conta do usuário por falha intermediária.
+
+#### Mensagens ao usuário (UI e TomatoIA)
+
+Texto voltado ao usuário **must**:
+
+- Ser **português**, **simples** e **ação clara** (o que fazer a seguir).
+- **Não** incluir: `session_id`, `device_id`, `user_id`, `mac_address`, `claim_token`, nonces, senhas MQTT/WiFi, trechos de stack trace, `failure_reason` bruto.
+
+O campo **`user_message`** na sessão (e equivalente em respostas HTTP) é a **fonte canônica** para:
+
+- Banner/toast na **UI de adoção**;
+- **TomatoIA** ao explicar falha (“não deu para adotar”) — o agente **repete ou resume** `user_message`, **sem** inventar IDs nem pedir secrets.
+
+Catálogo mínimo (implementação pode mapear `failure_reason` → `user_message`):
+
+| Situação | `user_message` (exemplo) |
+|----------|---------------------------|
+| Timeout / expirado | Não concluímos a adoção a tempo. Deixe o dispositivo ligado e conectado e escaneie o QR novamente. |
+| Já adotado por outro | Este dispositivo já está vinculado a outra conta. |
+| Contrato / device incompatível | Não foi possível validar este dispositivo. Confira o QR ou o manual do produto. |
+| Device não respondeu | O dispositivo não respondeu no passo de pareamento. Verifique Wi‑Fi e energia e tente de novo. |
+| Genérico | A adoção não foi concluída. Nada foi salvo na sua conta. Você pode tentar outra vez. |
+
+Logs estruturados **podem** carregar `failure_reason`, `session_id`, `user_id` (campo log), `mac_address` — conforme [`logging.md`](../logging.md); isso **não** vai para `user_message`.
+
+### 4.4 Encerramento dos tópicos de adoção (pós-commit)
+
+Quando a fase **6 — Commit** termina com sucesso (`session_status`: `committed`), o namespace **`unclaimed/...`** e os sufixos de **handshake** deixam de fazer parte da operação daquele device. A partir daí vale **somente** `{mqtt_topic_base}` = `tenants/{user_id}/devices/{device_id}` (§5).
+
+| Ator | Durante handshake | Após commit (operação normal) |
+|------|-------------------|-------------------------------|
+| **Device** | Publica/assina sob `unclaimed_topic_base` + sufixos §4.2 / task [008](../task/008-device-adoption-handshake-refinement.md) | **MUST NOT** publicar nem assinar em `unclaimed/...` nem reutilizar sufixos de handshake; **MUST** usar exclusivamente `{mqtt_topic_base}/telemetry`, `/commands`, `/state`, `/status` |
+| **Worker MQTT** | Pode assinar tópicos de handshake (ex.: `unclaimed/devices/+/info`, `.../ack`) para entregar ack/info ao serviço de adoção; **não** persistir telemetria de `unclaimed/...` em `devices` | Assinaturas **permanentes** de ingestão: `tenants/+/devices/+/telemetry`, `.../status`, `.../state` ([task 004](../task/004-mqtt-worker.md)); mensagens tardias em `unclaimed/...` **must not** reabrir adoção nem gravar telemetria — registrar aviso operacional |
+| **Backend (API)** | Orquestra sessão, publica `challenge`/`config` | Commit feito; sessão encerrada ou arquivada |
+
+**Transição no firmware (obrigatória):** após aplicar config (§6.6), persistir `adopted_status = 1`, publicar `adoption_ack` válido (§6.7) e reconectar ao broker se necessário, o device **desativa** o prefixo não adotado: unsubscribe nos sufixos de handshake, deixa de publicar em `unclaimed/...` (incl. `/announce` retain, se usado) e passa a operar só em `{mqtt_topic_base}`.
+
+**Worker — regra explícita:** o worker **não** mantém o canal `unclaimed` como paralelo à telemetria pós-adoção. Handshake é **fase transitória**; telemetria e presença **somente** sob `tenants/...` após commit. Implementação futura pode usar subscribe amplo `unclaimed/#` só para sessões ativas, com filtro por `session_id` / MAC, ou subscribe pontual por sessão — em todos os casos, após `committed`, tráfego `unclaimed` desse device é **ignorado** para ingestão (opcional: log `adoption.unclaimed_after_commit`).
+
+**Mosquitto (produção):** ACL do credential do device **SHOULD** negar publish/subscribe sob `unclaimed/...` após provisionamento definitivo (defesa em profundidade).
 
 ---
 
@@ -373,8 +470,8 @@ Espelho conceitual `DeviceConfig` (device_app) — entrega via canal seguro (nã
 | `device_name` | nome amigável |
 | `topic` | igual a `mqtt_topic_base` |
 | `broker_url` | ex.: `mqtt://host:1883` ou `mqtts://...` |
-| `mqtt_username` / `mqtt_password` | por device (provisionamento) |
-| `wifi_ssid` / `wifi_password` | se aplicável |
+| `mqtt_username` / `mqtt_password` | **Produção:** por device. **v1.2-dev:** omitir ou repetir credencial **compartilhada** do backend (§7.3) |
+| `wifi_ssid` / `wifi_password` | **Não** enviados pelo backend na v1 (WiFi = firmware — §7.1). Referência device_app serial mantida só como legado |
 | `adopted_status` | `1` = adotado |
 
 ### 6.7 Handshake de adoção
@@ -400,12 +497,38 @@ Espelho conceitual `DeviceConfig` (device_app) — entrega via canal seguro (nã
 
 ## 7. Provisionamento e rede (requisitos)
 
+### 7.1 WiFi — escopo firmware (não backend v1)
+
+| Responsável | Escopo |
+|-------------|--------|
+| **Firmware / device** | Como o usuário informa SSID/senha (SoftAP, BLE, serial USB, SmartConfig, etc.); quando conectar; persistência local |
+| **Backend mqtt-chat** | **Não** implementa provisioning WiFi; **não** expõe API para credenciais WiFi; **não** inclui WiFi no JSON MQTT `.../config` na v1 |
+
+Canais **serial** ou **BLE** citados na referência device_app permanecem **evolução do embarcado**, não entregável deste repositório na v1.
+
+### 7.2 Requisitos de rede
+
 | RF | Descrição |
 |----|-----------|
-| RF-NET-01 | Device é responsável por conectividade IP (WiFi/celular); fora de escopo v1 definir stack WiFi |
-| RF-NET-02 | Backend envia `broker_url`, credenciais e `mqtt_topic_base` na fase de proposta; credenciais **definitivas** e ACL alinhadas ao **commit** |
+| RF-NET-01 | Device é responsável por conectividade IP até o broker; **stack WiFi = firmware** (§7.1) |
+| RF-NET-02 | Backend envia `broker_url`, credenciais MQTT e `mqtt_topic_base` na fase de proposta; credenciais **definitivas** e ACL alinhadas ao **commit** |
 | RF-NET-03 | Mosquitto ACL **must** restringir publish/subscribe ao prefixo do `device_id` — aplicada no **commit**, não no scan |
 | RF-NET-04 | Rotação de credencial MQTT suportada no desenho (campo `mqtt_password_version` — opcional futuro) |
+
+### 7.3 Mosquitto — **v1.2-dev** (credencial compartilhada)
+
+Decisão de implementação inicial (**Opção A**):
+
+| Ambiente | Broker | Credenciais no `.../config` |
+|----------|--------|-----------------------------|
+| **Dev local** | Mosquitto task 001 — `allow_anonymous true` ([`docker/mosquitto/mosquitto.conf`](../../docker/mosquitto/mosquitto.conf)) | **Compartilhadas:** worker, simulador e payload de adoção usam o mesmo `broker_url` (`MQTT_HOST`/`MQTT_PORT`) e, se configurado, **mesmo** par `MQTT_USERNAME` / `MQTT_PASSWORD` do backend (`.env`). **Não** gerar user/senha por device no commit v1.2-dev. |
+| **Produção (futuro)** | Auth obrigatória; ACL por `device_id` | RF-NET-02/03 — credencial **por device** + automação Mosquitto |
+
+**Implicações v1.2-dev:**
+
+- Commit grava `devices` + `mqtt_topic_base` (+ campos opcionais em Firestore); **não** exige alterar `password_file` do broker.
+- Isolamento entre tenants continua **lógico** (prefixo `tenants/{user_id}/devices/{device_id}`), não ACL física no broker até fase produção.
+- Simulador e worker conectam como hoje; device em `unclaimed` e pós-adoção usam as mesmas credenciais de dev.
 
 Ver §4.3. Resposta de `/adopt/start` retorna `session_id` e estado; metadados do device na UI vêm da sessão após `device_verified`. Senha MQTT **não** na resposta HTTP se entrega for só via MQTT/serial.
 
@@ -425,18 +548,24 @@ Ver §4.3. Resposta de `/adopt/start` retorna `session_id` e estado; metadados d
 | RF-PAY-01 | Telemetria multi-métrica via array `readings` (recomendado) |
 | RF-PAY-02 | Worker aceita payload legado PoC single-metric |
 | RF-ADOPT-01 | Usuário autenticado inicia adoção via UI; **`devices` só após commit** |
-| RF-ADOPT-02 | `claim_token` uso único + TTL; invalidar após commit bem-sucedido |
-| RF-ADOPT-03 | Scan fora do LLM; chat apenas orienta |
+| RF-ADOPT-02 | `claim_token`: **`bound`** após commit enquanto device adotado; **reutilizável** após `remove_device` + reset/eligibilidade (§3.2) — **não** uso único vitalício; falha de sessão **não** consome token |
+| RF-ADOPT-03 | QR/câmera e progresso podem viver **no painel chat** (UI); **proibido** tool MCP/LLM decodificar QR ou executar handshake/commit. **Proibido** `register_device`. Ver [009-adoption-guided-chat-ux.md](../../task/009-adoption-guided-chat-ux.md) |
 | RF-ADOPT-04 | Rejeitar commit se MAC já adotado por outro `user_id` ou firmware reporta outro dono |
 | RF-ADOPT-05 | Validar contrato (§6.5) antes de enviar config; falha → sessão `failed`, sem `devices` |
 | RF-ADOPT-06 | Commit **somente** após `adoption_ack` válido (§6.7) — confirmação backend **e** device |
+| RF-ADOPT-07 | **v1.2-dev:** anti-fake sem inventário — MAC sessão = MAC `.../info` + handshake (§3.4). **Fase QR-C:** exigir `claim_token` ↔ `factory_inventory` |
+| RF-ADOPT-08 | Anti-replay: **nonce** + TTL sessão (§4.5, §6.7) |
+| RF-ADOPT-09 | Após commit, device e worker **somente** `{mqtt_topic_base}` (§5); tópicos `unclaimed` e handshake **deixam de ser ativados** para esse device (§4.4) |
+| RF-ADOPT-10 | Handshake limitado por **`ADOPTION_HANDSHAKE_TIMEOUT_SEC`** (default 300 s); expirado → `expired`, sem commit |
+| RF-ADOPT-11 | Qualquer erro ou cancelamento **aborta** sem registro em `devices` nem efeitos definitivos de ACL (§4.5.2) |
+| RF-ADOPT-12 | Falha/expiração expõe **`user_message`** seguro (PT); **nunca** IDs, tokens ou senhas ao usuário (§4.5.3) |
 
 ---
 
 ## 9. Segurança (mínimo)
 
 - QR / token não expõe senha MQTT.
-- Token factory ou pareamento com TTL; invalidar após adoção.
+- Sessão de adoção com TTL (§4.5); token **`bound`** só enquanto placa adotada; re-adoção após remoção/reset (§3.2).
 - Adoção com MAC exige device não adotado e política anti-enumeração (rate limit).
 - Factory reset no device regenera claim ou volta `adoption_status` — detalhe firmware (futuro).
 
@@ -454,3 +583,12 @@ Ver §4.3. Resposta de `/adopt/start` retorna `session_id` e estado; metadados d
 |------|-----------|
 | 2026-10-10 | v1 inicial — task 003 |
 | 2026-10-10 | v1.1 — commit tardio: `adoption_sessions`, handshake, Firestore/Mosquitto após ack mútuo |
+| 2026-10-11 | §4.4 + RF-ADOPT-09 — pós-commit: `unclaimed`/handshake desativados; worker só ingestão `tenants/...` |
+| 2026-10-11 | §1 princípio 6 — adoção device↔backend **somente MQTT** (HTTP só browser↔API) |
+| 2026-10-11 | §4.5 + RF-ADOPT-10..12 — timeout 5 min (env), abort sem parcial, `user_message` seguro |
+| 2026-10-12 | RF-ADOPT-02 / §3.2 — `claim_token` reutilizável após remoção+reset; `bound` ≠ uso único forever |
+| 2026-10-12 | §1.7 / §7.1 — WiFi provisioning fora do escopo backend v1; MQTT config sem WiFi |
+| 2026-10-12 | §1 + RF-ADOPT-03 — adoção = único registro de device; sem MCP register |
+| 2026-10-12 | v1.2-dev — **UC-A** + QR-A/simulador primeiro; §4.2.1; QR-C/UC-B fase fábrica |
+| 2026-10-12 | RF-ADOPT-07/08 — anti-fake dev sem `factory_inventory`; inventário na fase QR-C |
+| 2026-10-12 | §7.3 — Mosquitto dev: credencial **compartilhada** / anonymous; ACL por device fase produção |

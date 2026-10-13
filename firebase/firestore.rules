@@ -23,6 +23,12 @@ service cloud.firestore {
         && request.resource.data.user_id == request.auth.uid;
     }
 
+    match /adoption_sessions/{sessionId} {
+      allow read: if request.auth != null
+        && resource.data.user_id == request.auth.uid;
+      allow write: if false;
+    }
+
     match /devices/{deviceId}/telemetry/{docId} {
       allow read: if request.auth != null
         && get(/databases/$(database)/documents/devices/$(deviceId)).data.user_id
