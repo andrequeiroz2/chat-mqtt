@@ -20,4 +20,6 @@ ui-debug.log
 firebase-adminsdk*.json
 secrets/service-account.json
 secrets/*.json
+embedded/firmware/secrets_wifi.py
+embedded/out/
 *.pem

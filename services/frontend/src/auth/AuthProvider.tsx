@@ -5,7 +5,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { ApiError, createApiClient } from '../api/client'
 import type { AuthState } from '../types/auth'
@@ -61,17 +61,22 @@ type AuthProviderProps = {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, setState] = useState<AuthState>(initialState)
+  /** Erro de getMe antes do signOut — evita race com onAuthStateChanged(null). */
+  const profileLoadErrorRef = useRef<string | null>(null)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        setState({
+        const pendingError = profileLoadErrorRef.current
+        profileLoadErrorRef.current = null
+        setState((prev) => ({
           status: 'signed_out',
           firebaseUser: null,
           profile: null,
           api: null,
-          error: null,
-        })
+          error:
+            pendingError ?? (prev.status === 'signed_out' ? prev.error : null),
+        }))
         return
       }
 
@@ -80,6 +85,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setState(await loadSignedInState(user))
       } catch (err) {
         const detail = mapProfileError(err)
+        profileLoadErrorRef.current = detail
+        await firebaseSignOut(auth)
         setState({
           status: 'signed_out',
           firebaseUser: null,
@@ -87,7 +94,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           api: null,
           error: detail,
         })
-        await firebaseSignOut(auth)
       }
     })
 

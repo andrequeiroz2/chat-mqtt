@@ -128,6 +128,10 @@ async def _try_connect_and_monitor(
     async with mqtt_session(settings) as client:
         ctx.health.mqtt_connected = True
         ctx.health.last_error = None
+        pump_task = asyncio.create_task(
+            _publish_queue_pump(client, ctx.publish_queue, stop_event),
+            name="mqtt-publish-pump",
+        )
         if is_reconnect:
             log_event(
                 logger,
@@ -147,21 +151,49 @@ async def _try_connect_and_monitor(
                 mqtt_port=settings.mqtt_port,
             )
 
-        async for message in client.messages:
-            if stop_event.is_set():
-                return True
-
+        try:
             await _drain_publish_queue(client, ctx.publish_queue)
+            async for message in client.messages:
+                if stop_event.is_set():
+                    return True
 
-            await handle_mqtt_message(
-                str(message.topic),
-                message.payload,
-                settings,
-                db,
-                ctx.publish_queue,
-            )
+                await _drain_publish_queue(client, ctx.publish_queue)
 
-        return False
+                await handle_mqtt_message(
+                    str(message.topic),
+                    message.payload,
+                    settings,
+                    db,
+                    ctx.publish_queue,
+                )
+
+            return False
+        finally:
+            pump_task.cancel()
+            try:
+                await pump_task
+            except asyncio.CancelledError:
+                pass
+
+
+async def _publish_queue_pump(
+    client: Client,
+    queue: asyncio.Queue[PublishRequest],
+    stop_event: asyncio.Event,
+) -> None:
+    """
+    Esvazia a fila outbound mesmo sem tráfego inbound.
+
+    Adoção publica challenge/config via HTTP → fila; o device só responde depois
+    do challenge — sem pump, a fila nunca era drenada (deadlock).
+    """
+    while not stop_event.is_set():
+        await _drain_publish_queue(client, queue)
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=0.15)
+            break
+        except TimeoutError:
+            continue
 
 
 async def _drain_publish_queue(client: Client, queue: asyncio.Queue[PublishRequest]) -> None:
@@ -173,6 +205,15 @@ async def _drain_publish_queue(client: Client, queue: asyncio.Queue[PublishReque
             break
         try:
             await publish_message(client, topic, payload)
+            if topic.startswith("unclaimed/devices/"):
+                log_event(
+                    logger,
+                    logging.INFO,
+                    events.MQTT_PUBLISHED,
+                    "MQTT published",
+                    topic=topic,
+                    payload_bytes=len(payload),
+                )
         except Exception as exc:
             logger.error("Publish failed topic=%s error=%s", topic, exc)
 

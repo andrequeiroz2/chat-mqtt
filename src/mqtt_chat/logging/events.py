@@ -9,6 +9,7 @@ MQTT_MESSAGE_RECEIVED = "mqtt.message.received"
 MQTT_CONNECTION_LOST = "mqtt.connection.lost"
 MQTT_CONNECTION_RESTORED = "mqtt.connection.restored"
 MQTT_BACKOFF = "mqtt.backoff"
+MQTT_PUBLISHED = "mqtt.published"
 MQTT_PUBLISH_FAILED = "mqtt.publish.failed"
 MQTT_WORKER_STOPPED = "mqtt.worker.stopped"
 

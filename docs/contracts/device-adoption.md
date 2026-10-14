@@ -501,7 +501,7 @@ Espelho conceitual `DeviceConfig` (device_app) — entrega via canal seguro (nã
 
 | Responsável | Escopo |
 |-------------|--------|
-| **Firmware / device** | Como o usuário informa SSID/senha (SoftAP, BLE, serial USB, SmartConfig, etc.); quando conectar; persistência local |
+| **Firmware / device** | Como o usuário informa SSID/senha (SoftAP, BLE, serial USB, SmartConfig, etc.); quando conectar; persistência local — implementação mqtt-chat: [`embedded/`](../../embedded/) · [task 010](../../task/010-embedded-esp32c3-micropython.md) |
 | **Backend mqtt-chat** | **Não** implementa provisioning WiFi; **não** expõe API para credenciais WiFi; **não** inclui WiFi no JSON MQTT `.../config` na v1 |
 
 Canais **serial** ou **BLE** citados na referência device_app permanecem **evolução do embarcado**, não entregável deste repositório na v1.
