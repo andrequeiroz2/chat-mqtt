@@ -65,9 +65,10 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | `list_devices` | Listar dispositivos do usuário (somente já adotados) — contrato: [`docs/contracts/mcp-list-devices.md`](contracts/mcp-list-devices.md) |
 | `update_device` | Atualizar metadados de device **já adotado** (ex.: nome amigável) |
 | `remove_device` | Remover device da conta (libera re-adoção — contrato §3.2) |
-| `read_latest_telemetry` | Ler última telemetria |
+| `read_latest_telemetry` | Ler última telemetria — contrato: [`docs/contracts/mcp-read-latest-telemetry.md`](contracts/mcp-read-latest-telemetry.md) |
 | `publish_command` | Publicar comando (actuator) |
 | `get_telemetry_history` | Obter histórico para gráfico |
+| `get_realtime_stream_info` | Metadados do WebSocket tempo real (UI) — [`docs/contracts/realtime-websocket.md`](contracts/realtime-websocket.md) |
 | `get_user_profile` | Ler perfil do usuário autenticado (opcional; preferir deps para saudação) |
 | `update_user_profile` | Atualizar campos permitidos do perfil (ex.: `display_name`) |
 

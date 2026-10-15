@@ -41,6 +41,10 @@ CHAT_TURN_OFF_TOPIC = "chat.turn.off_topic"
 # MCP
 MCP_TOOL_CALL = "mcp.tool.call"
 MCP_TOOL_LIST_DEVICES = "mcp.tool.list_devices"
+MCP_TOOL_READ_LATEST_TELEMETRY = "mcp.tool.read_latest_telemetry"
+REALTIME_WS_CONNECTED = "realtime.ws.connected"
+REALTIME_WS_SEND_FAILED = "realtime.ws.send_failed"
+REALTIME_EVENT_PUBLISHED = "realtime.event.published"
 MCP_AUTH_REJECTED = "mcp.auth.rejected"
 
 # Adoção

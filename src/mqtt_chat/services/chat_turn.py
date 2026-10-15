@@ -12,7 +12,7 @@ from mqtt_chat.agent.chat_agent import run_chat
 from mqtt_chat.agent.deps import UserDeps
 from mqtt_chat.agent.tomato_ia import OFF_TOPIC_REPLY
 from mqtt_chat.logging import events, log_event
-from mqtt_chat.schemas.chat import ChatScope, ChatTurnResult
+from mqtt_chat.schemas.chat import ChatScope, ChatTurnResult, SuggestedUiAction
 from mqtt_chat.services.chat_history import append_turn, load_message_history
 
 if TYPE_CHECKING:
@@ -28,6 +28,7 @@ class TurnOutcome:
     reply: str
     persist: bool
     scope: ChatScope
+    suggested_ui: SuggestedUiAction | None = None
 
 
 def finalize_turn(raw: ChatTurnResult) -> TurnOutcome:
@@ -46,15 +47,16 @@ async def execute_chat_turn(
 ) -> TurnOutcome:
     """Carrega histórico, executa agente, persiste somente turnos in-scope."""
     history = load_message_history(db, deps.user_id, deps.session_id, max_messages)
-    deps_with_history = UserDeps(
-        user_id=deps.user_id,
-        display_name=deps.display_name,
-        session_id=deps.session_id,
-        db=deps.db,
-        history_empty=len(history) == 0,
-    )
-    raw = await run_chat(agent, deps_with_history, user_message, history)
+    deps.history_empty = len(history) == 0
+    deps.suggested_ui = None
+    raw = await run_chat(agent, deps, user_message, history)
     outcome = finalize_turn(raw)
+    outcome = TurnOutcome(
+        reply=outcome.reply,
+        persist=outcome.persist,
+        scope=outcome.scope,
+        suggested_ui=deps.suggested_ui,
+    )
 
     if outcome.persist:
         append_turn(

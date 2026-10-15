@@ -15,7 +15,9 @@ from mqtt_chat.logging.bootstrap import setup_logging_from_settings
 from mqtt_chat.api.routes import adopt as adopt_routes
 from mqtt_chat.api.routes import chat as chat_routes
 from mqtt_chat.api.routes import me as me_routes
+from mqtt_chat.api.routes import realtime as realtime_routes
 from mqtt_chat.server import build_mcp_server
+from mqtt_chat.realtime.hub import get_realtime_hub
 from mqtt_chat.worker.monitor import WorkerHealth, run_with_reconnect
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,7 @@ async def lifespan(app: FastAPI):
 
     app.state.worker_health = health
     app.state.publish_queue = publish_queue
+    app.state.realtime_hub = get_realtime_hub()
 
     worker_task = asyncio.create_task(
         run_with_reconnect(settings, stop_event, health, publish_queue),
@@ -82,6 +85,7 @@ app.add_middleware(
 app.include_router(me_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(adopt_routes.router)
+app.include_router(realtime_routes.router)
 
 _mcp_settings = get_settings()
 _mcp = build_mcp_server(_mcp_settings, auth_enabled=True)

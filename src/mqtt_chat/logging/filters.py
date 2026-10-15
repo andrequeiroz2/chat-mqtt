@@ -29,12 +29,18 @@ def redact_mapping(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def redact_text(text: str) -> str:
-    """Mascara padrões password= / token= em strings."""
-    return re.sub(
+    """Mascara padrões password= / token= em strings (incl. query WebSocket)."""
+    text = re.sub(
         r"(?i)(password|secret|token|api_key)\s*[:=]\s*\S+",
         r"\1=" + REDACTED,
         text,
     )
+    text = re.sub(
+        r"(?i)([?&]token=)[^&\s\"']+",
+        r"\1" + REDACTED,
+        text,
+    )
+    return text
 
 
 class SecretRedactionFilter(logging.Filter):

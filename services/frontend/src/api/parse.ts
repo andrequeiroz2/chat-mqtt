@@ -57,8 +57,27 @@ export function normalizeUserProfile(value: UserProfile): UserProfile {
   }
 }
 
+function isSuggestedUiAction(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+  if (value.kind !== 'realtime_telemetry' || !isString(value.device_id)) {
+    return false
+  }
+  const name = value.device_name
+  return name === null || name === undefined || isString(name)
+}
+
 export function isChatResponse(value: unknown): value is ChatResponse {
   if (!isRecord(value)) {
+    return false
+  }
+  const suggested = value.suggested_ui
+  if (
+    suggested !== undefined &&
+    suggested !== null &&
+    !isSuggestedUiAction(suggested)
+  ) {
     return false
   }
   return (

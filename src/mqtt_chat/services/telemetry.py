@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from mqtt_chat.config.settings import Settings
 from mqtt_chat.logging import events, log_event
 from mqtt_chat.schemas.telemetry import ReadingItem, StatusPayload, TelemetryPayload
+from mqtt_chat.services import realtime_broadcast
 from mqtt_chat.worker.topics import ParsedDeviceTopic
 
 if TYPE_CHECKING:
@@ -73,6 +74,12 @@ async def persist_telemetry(
             readings_count=len(readings),
             persist_mode="log",
         )
+        await realtime_broadcast.broadcast_telemetry(
+            parsed,
+            readings,
+            device_ts=device_ts,
+            received_at=received_at,
+        )
         return
 
     try:
@@ -98,6 +105,12 @@ async def persist_telemetry(
         device_id=parsed.device_id,
         readings_count=len(readings),
         persist_mode="firestore",
+    )
+    await realtime_broadcast.broadcast_telemetry(
+        parsed,
+        readings,
+        device_ts=device_ts,
+        received_at=received_at,
     )
 
 
@@ -166,6 +179,11 @@ async def persist_status(
             op,
             status.ts or received_at,
         )
+        await realtime_broadcast.broadcast_device_status(
+            parsed,
+            operation_status=op,
+            last_seen_at=received_at,
+        )
         return
 
     device_ref = db.collection("devices").document(parsed.device_id)
@@ -178,6 +196,11 @@ async def persist_status(
     if op is not None:
         patch["operation_status"] = op
     device_ref.set(patch, merge=True)
+    await realtime_broadcast.broadcast_device_status(
+        parsed,
+        operation_status=op,
+        last_seen_at=received_at,
+    )
 
 
 async def persist_state(

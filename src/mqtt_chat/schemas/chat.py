@@ -7,6 +7,15 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 ChatScope = Literal["product", "off_topic"]
+SuggestedUiKind = Literal["realtime_telemetry"]
+
+
+class SuggestedUiAction(BaseModel):
+    """Hint para o frontend montar widget (RF-009); não executa MQTT."""
+
+    kind: SuggestedUiKind
+    device_id: str = Field(min_length=1)
+    device_name: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -35,3 +44,4 @@ class ChatResponse(BaseModel):
     reply: str
     session_id: str
     persisted: bool
+    suggested_ui: SuggestedUiAction | None = None

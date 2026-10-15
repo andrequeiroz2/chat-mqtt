@@ -40,3 +40,7 @@ def setup_logging(
     # Reduz ruído de bibliotecas HTTP/gRPC em INFO
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("grpc").setLevel(logging.WARNING)
+
+    redaction = SecretRedactionFilter()
+    for logger_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+        logging.getLogger(logger_name).addFilter(redaction)

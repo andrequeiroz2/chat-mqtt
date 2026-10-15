@@ -7,6 +7,8 @@ from fastmcp import FastMCP
 from mqtt_chat.config.settings import Settings
 from mqtt_chat.mcp.firebase_verifier import FirebaseTokenVerifier
 from mqtt_chat.tools import list_devices as list_devices_tool
+from mqtt_chat.tools import get_realtime_stream_info as get_realtime_stream_info_tool
+from mqtt_chat.tools import read_latest_telemetry as read_latest_telemetry_tool
 
 
 def build_mcp_server(settings: Settings, *, auth_enabled: bool = True) -> FastMCP:
@@ -21,4 +23,6 @@ def build_mcp_server(settings: Settings, *, auth_enabled: bool = True) -> FastMC
         auth=auth,
     )
     list_devices_tool.register(mcp)
+    read_latest_telemetry_tool.register(mcp)
+    get_realtime_stream_info_tool.register(mcp)
     return mcp

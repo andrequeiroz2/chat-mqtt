@@ -8,10 +8,11 @@ import type { ChatMessage } from '../types/chat-ui'
 import { getOrCreateChatSessionId } from './session'
 import { AdoptWizardPanel, type AdoptWizardPhase } from './adopt/AdoptWizardPanel'
 import { isAdoptionIntent } from './adopt/intent'
+import { LiveTelemetryChatBubble } from '../realtime/LiveTelemetryChatBubble'
 import { POST_SUCCESS_MENU, PRECHECK_ASSISTANT } from './adopt/progressCopy'
 
 export function ChatScreen() {
-  const { profile, api, actions } = useSignedInAuth()
+  const { profile, api, actions, getAccessToken } = useSignedInAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -58,11 +59,27 @@ export function ChatScreen() {
       }
 
       try {
-        const { reply } = await api.postChat({ message: text, session_id: sessionId })
-        setMessages((prev) => [
-          ...prev,
-          { id: crypto.randomUUID(), role: 'assistant', text: reply },
-        ])
+        const response = await api.postChat({ message: text, session_id: sessionId })
+        setMessages((prev) => {
+          const next = [
+            ...prev,
+            { id: crypto.randomUUID(), role: 'assistant' as const, text: response.reply },
+          ]
+          const ui = response.suggested_ui
+          if (ui?.kind === 'realtime_telemetry') {
+            const withoutLive = next.filter((m) => m.role !== 'live_telemetry')
+            return [
+              ...withoutLive,
+              {
+                id: crypto.randomUUID(),
+                role: 'live_telemetry' as const,
+                deviceId: ui.device_id,
+                deviceName: ui.device_name ?? null,
+              },
+            ]
+          }
+          return next
+        })
       } catch (err) {
         const code = err instanceof ApiError ? err.detail : 'chat_failed'
         setError(formatAuthError(code) ?? code)
@@ -95,11 +112,24 @@ export function ChatScreen() {
         {messages.length === 0 && (
           <li className="chat-empty muted">Envie uma mensagem para começar.</li>
         )}
-        {messages.map((msg) => (
-          <li key={msg.id} className={`chat-bubble ${msg.role}`}>
-            {msg.text}
-          </li>
-        ))}
+        {messages.map((msg) =>
+          msg.role === 'live_telemetry' ? (
+            <li key={msg.id} className="chat-bubble assistant live-telemetry-wrap">
+              <LiveTelemetryChatBubble
+                deviceId={msg.deviceId}
+                deviceName={msg.deviceName}
+                getAccessToken={getAccessToken}
+                onStop={() =>
+                  setMessages((prev) => prev.filter((m) => m.id !== msg.id))
+                }
+              />
+            </li>
+          ) : (
+            <li key={msg.id} className={`chat-bubble ${msg.role}`}>
+              {msg.text}
+            </li>
+          ),
+        )}
       </ul>
 
       {adoptPhase !== null && (

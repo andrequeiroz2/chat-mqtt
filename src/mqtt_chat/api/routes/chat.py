@@ -77,6 +77,7 @@ def _to_response(outcome: TurnOutcome, session_id: str) -> ChatResponse:
         reply=outcome.reply,
         session_id=session_id,
         persisted=outcome.persist,
+        suggested_ui=outcome.suggested_ui,
     )
 
 
