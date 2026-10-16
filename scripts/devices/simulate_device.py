@@ -16,7 +16,7 @@ Tópicos e payloads (JSON, chaves em inglês — ver docs/glossary.md):
     commands   — ASSINA (sensor e actuator); backend/usuário PUBLICA aqui
         action       (string, actuator: "set")
         channel      (number, opcional, ex.: 1)
-        value        (boolean, actuator: estado desejado do relé)
+        value        (0 | 1 | boolean, actuator: off/on — ver actuator-binary-command.md)
         command_id   (string, opcional, idempotência)
 
     state      — PUBLICA (resposta a command ou heartbeat do actuator)
@@ -46,6 +46,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import paho.mqtt.client as mqtt
+
+from mqtt_chat.services.actuator_command_language import mqtt_set_value_to_bool
 
 DEFAULT_USER_ID = "dev-user"
 DEFAULT_DEVICE_ID = "sim-1"
@@ -91,7 +93,7 @@ def print_connection_contract(args: argparse.Namespace) -> None:
         (
             "SUBSCRIBE",
             topic_commands(uid, did),
-            '{"action":"set","channel":1,"value":true|false,"command_id":"..."}  '
+            '{"action":"set","channel":1,"value":0|1|true|false,"command_id":"..."}  '
             "(actuator; sensor só ACK se receber)",
         ),
         (
@@ -244,10 +246,15 @@ class DeviceSimulator:
             except json.JSONDecodeError:
                 payload = {}
             if payload.get("action") == "set":
-                self._relay_on = bool(payload.get("value", False))
-                ack["status"] = "applied"
-                ack["command_id"] = payload.get("command_id")
-                ack["value"] = self._relay_on
+                try:
+                    self._relay_on = mqtt_set_value_to_bool(payload.get("value", 0))
+                except ValueError:
+                    ack["status"] = "rejected"
+                    ack["command_id"] = payload.get("command_id")
+                else:
+                    ack["status"] = "applied"
+                    ack["command_id"] = payload.get("command_id")
+                    ack["value"] = self._relay_on
         else:
             ack["status"] = "ack"
 

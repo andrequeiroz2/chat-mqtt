@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+LAST_REPORTED_STATE_MAX_BYTES = 2048
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -203,13 +205,29 @@ async def persist_status(
     )
 
 
+def summarize_state_payload(raw: dict) -> dict:
+    """
+    Reduz payload MQTT state para `last_reported_state` (cap 2 KiB — contrato 011-d).
+
+    Precedência na copy TomatoIA: `last_command` (plataforma) descreve intenção enviada;
+    `last_reported_state` reflete ACK/estado reportado pelo firmware.
+    """
+    encoded = json.dumps(raw, separators=(",", ":"), ensure_ascii=False)
+    if len(encoded.encode("utf-8")) <= LAST_REPORTED_STATE_MAX_BYTES:
+        return raw
+    slim_keys = ("action", "channel", "value", "state", "status", "command_id")
+    slim = {k: raw[k] for k in slim_keys if k in raw}
+    slim["_truncated"] = True
+    return slim
+
+
 async def persist_state(
     parsed: ParsedDeviceTopic,
     payload_bytes: bytes,
     settings: Settings,
     db: FirestoreClient | None,
 ) -> None:
-    """PoC: log ou último state em subcoleção opcional."""
+    """Persiste state MQTT em evento + espelho `last_reported_state` no device."""
     received_at = _now_iso()
     try:
         raw = json.loads(payload_bytes.decode("utf-8"))
@@ -217,12 +235,18 @@ async def persist_state(
         logger.warning("Invalid state JSON topic=%s error=%s", parsed.mqtt_topic_base, exc)
         return
 
+    if not isinstance(raw, dict):
+        logger.warning("Invalid state payload (not object) topic=%s", parsed.mqtt_topic_base)
+        return
+
+    summary = summarize_state_payload(raw)
+
     if settings.worker_persist_mode == "log" or db is None:
         logger.info(
             "state user_id=%s device_id=%s payload=%s",
             parsed.user_id,
             parsed.device_id,
-            raw,
+            summary,
         )
         return
 
@@ -235,4 +259,22 @@ async def persist_state(
             "received_at": received_at,
         }
     )
-    device_ref.set({"last_seen_at": received_at}, merge=True)
+    device_ref.set(
+        {
+            "user_id": parsed.user_id,
+            "device_id": parsed.device_id,
+            "mqtt_topic_base": parsed.mqtt_topic_base,
+            "last_seen_at": received_at,
+            "last_reported_state": summary,
+            "last_reported_state_at": received_at,
+        },
+        merge=True,
+    )
+    log_event(
+        logger,
+        logging.INFO,
+        events.DEVICE_METADATA_UPDATED,
+        "Device last_reported_state updated",
+        user_id=parsed.user_id,
+        device_id=parsed.device_id,
+    )

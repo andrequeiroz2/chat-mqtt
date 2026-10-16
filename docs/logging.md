@@ -269,6 +269,7 @@ Sequência típica (simulador → worker → Firestore), com `LOG_LEVEL=DEBUG`:
 | `USER_PROFILE_UPDATED` | `user.profile.updated` |
 | `CHAT_TURN_PERSISTED` | `chat.turn.persisted` |
 | `CHAT_TURN_OFF_TOPIC` | `chat.turn.off_topic` (sem conteúdo da pergunta; `user_id`, `session_id`) |
+| `CHAT_RESOLVER_OUTCOME` | `chat.resolver.outcome` (`outcome`, `trigger_id`, `intent`; task 011) |
 
 ### 5.4 Erros genéricos
 

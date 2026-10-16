@@ -17,5 +17,6 @@ export type ApiErrorBody = {
 export type KnownApiErrorCode =
   | 'not_authenticated'
   | 'chat_model_not_configured'
+  | 'chat_turn_limit_exceeded'
   | 'user_profile_not_found'
   | 'request_failed'

@@ -48,11 +48,25 @@ class Settings(BaseSettings):
         validation_alias="CHAT_MODEL",
     )
     google_api_key: str | None = Field(default=None, validation_alias="GOOGLE_API_KEY")
+    openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     chat_max_turns: int = Field(
         default=15,
         ge=1,
         le=100,
         validation_alias="CHAT_MAX_TURNS",
+    )
+    chat_device_snapshot_cap: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        validation_alias="CHAT_DEVICE_SNAPSHOT_CAP",
+    )
+    chat_agent_request_limit: int = Field(
+        default=15,
+        ge=3,
+        le=100,
+        validation_alias="CHAT_AGENT_REQUEST_LIMIT",
+        description="Máximo de chamadas ao modelo por turno (cada tool round conta).",
     )
 
     adoption_handshake_timeout_sec: int = Field(
@@ -68,10 +82,20 @@ class Settings(BaseSettings):
         """Máximo de documentos em messages/ (1 turno = user + assistant)."""
         return self.chat_max_turns * 2
 
+    @property
+    def chat_model_provider(self) -> str:
+        """Prefixo do `CHAT_MODEL` (ex.: google, openai) — Pydantic AI."""
+        if ":" in self.chat_model:
+            return self.chat_model.split(":", 1)[0].strip().lower()
+        return ""
+
     def chat_model_configured(self) -> bool:
-        """True se o provedor do modelo tiver credencial (PoC: Google API key)."""
-        if self.chat_model.startswith("google"):
+        """True se o provedor do `CHAT_MODEL` tiver credencial no .env."""
+        provider = self.chat_model_provider
+        if provider == "google":
             return bool(self.google_api_key)
+        if provider == "openai":
+            return bool(self.openai_api_key)
         return True
 
 

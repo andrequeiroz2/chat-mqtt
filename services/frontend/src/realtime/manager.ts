@@ -98,7 +98,10 @@ class RealtimeConnectionManager {
       this.notifyStatus(false)
     }
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      if (event.code === 4409) {
+        this.lastError = 'device_not_online_for_realtime'
+      }
       if (this.pingTimer !== null) {
         window.clearInterval(this.pingTimer)
         this.pingTimer = null

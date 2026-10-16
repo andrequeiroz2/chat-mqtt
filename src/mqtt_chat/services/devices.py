@@ -154,6 +154,14 @@ def _load_candidates(
     return items
 
 
+def list_all_adopted_summaries(
+    db: FirestoreClient,
+    user_id: str,
+) -> list[DeviceSummary]:
+    """Todos os devices adotados do usuário (sem paginação — snapshot de chat)."""
+    return _load_candidates(db, user_id, ListDevicesInput(limit=100))
+
+
 def list_devices(
     db: FirestoreClient,
     user_id: str,

@@ -10,7 +10,11 @@ import { useAdoptionPoll } from './useAdoptionPoll'
 
 export type AdoptWizardPhase = 'precheck' | 'scan' | 'adopting' | 'done'
 
-type AdoptPhaseMeta = { committed: boolean }
+export type AdoptPhaseMeta = {
+  committed: boolean
+  deviceId?: string | null
+  deviceName?: string | null
+}
 
 type Props = {
   api: ApiClient
@@ -46,7 +50,11 @@ export function AdoptWizardPanel({
     onTerminal: (session: AdoptionSession) => {
       const committed = session.session_status === 'committed'
       onAssistantLine(progressCopy(session.session_status, session.user_message))
-      onPhaseChange('done', { committed })
+      onPhaseChange('done', {
+        committed,
+        deviceId: session.device_id,
+        deviceName: session.device_name,
+      })
     },
   })
 

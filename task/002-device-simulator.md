@@ -52,7 +52,7 @@ Fornecer um **device** simulado em Python que publica telemetria e responde a co
 ### `device_type`: actuator
 
 - Publica estado em `state` (retain): `{ "ts", "channel", "value" }`.
-- Em `commands`, aceita `{"action":"set","channel":1,"value":bool,"command_id":?}`.
+- Em `commands`, aceita `{"action":"set","channel":1,"value":0|1|bool,"command_id":?}` (integer 0/1 normativo MVP).
 - Responde ACK em `state` com `status`: `received` / `applied`.
 
 ### CLI

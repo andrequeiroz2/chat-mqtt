@@ -29,5 +29,6 @@ Cada task **DEVE** incluir, quando aplicável: **matriz de versões** (Docker, i
 | 008 | [008-device-adoption-handshake-refinement.md](008-device-adoption-handshake-refinement.md) | Em planejamento (contrato v1.2-dev; backend adoção) |
 | 009 | [009-adoption-guided-chat-ux.md](009-adoption-guided-chat-ux.md) | Em execução (009a MAC dev + polling no chat; QR câmera pendente) |
 | 010 | [010-embedded-esp32c3-micropython.md](010-embedded-esp32c3-micropython.md) | Em execução (WiFi fixo + handshake UC-A v0.1) |
+| 011 | [011-chat-session-context-policy.md](011-chat-session-context-policy.md) | MVP entregue (ondas 1–2 ✅; sem onda 3 — retomar opcionais/docs) |
 
 Referências: [`docs/requirements.md`](../docs/requirements.md) · [`.cursor/rules/mqtt-chat-project.mdc`](../.cursor/rules/mqtt-chat-project.mdc)

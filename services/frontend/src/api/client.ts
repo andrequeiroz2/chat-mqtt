@@ -1,11 +1,12 @@
 import { apiBaseUrl } from '../config/env'
 import type { AdoptionSession, AdoptionStartRequest } from '../types/api/adoption'
 import type { ChatRequest, UserProfile, UserProfileUpdateRequest } from '../types/api'
-import type { ChatResponse } from '../types/api/chat'
+import type { ChatResponse, PostAdoptionRequest, PostAdoptionResponse } from '../types/api/chat'
 import { API_PATHS } from './paths'
 import {
   assertAdoptionSession,
   assertChatResponse,
+  assertPostAdoptionResponse,
   assertUserProfile,
   parseApiErrorBody,
 } from './parse'
@@ -77,6 +78,14 @@ export function createApiClient(getAccessToken: () => Promise<string | null>) {
     postChat: async (body: ChatRequest): Promise<ChatResponse> =>
       assertChatResponse(
         await requestJson(API_PATHS.chat, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }),
+      ),
+
+    postChatPostAdoption: async (body: PostAdoptionRequest): Promise<PostAdoptionResponse> =>
+      assertPostAdoptionResponse(
+        await requestJson(API_PATHS.chatPostAdoption, {
           method: 'POST',
           body: JSON.stringify(body),
         }),

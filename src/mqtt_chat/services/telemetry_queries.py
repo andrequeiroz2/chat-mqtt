@@ -10,8 +10,13 @@ from google.cloud.firestore_v1 import Client as FirestoreClient
 from mqtt_chat.logging import events, log_event
 from mqtt_chat.schemas.devices import ListDevicesInput
 from mqtt_chat.schemas.telemetry import ReadingItem
-from mqtt_chat.schemas.telemetry_tools import ReadLatestTelemetryInput, ReadLatestTelemetryResult
+from mqtt_chat.schemas.telemetry_tools import (
+    Connectivity,
+    ReadLatestTelemetryInput,
+    ReadLatestTelemetryResult,
+)
 from mqtt_chat.services import devices as devices_service
+from mqtt_chat.services.device_intent_resolver import connectivity_from_status
 
 logger = logging.getLogger(__name__)
 
@@ -30,16 +35,24 @@ def resolve_device_for_telemetry(
     params: ReadLatestTelemetryInput,
 ) -> tuple[str, str | None]:
     """Resolve device_id e device_name para telemetria (MCP / agente)."""
-    device_id, device_name, _ = _resolve_device_id(db, user_id, params)
+    device_id, device_name, _, _, _, _ = _resolve_device_id(db, user_id, params)
     return device_id, device_name
+
+
+def _presence_from_doc(data: dict[str, Any]) -> tuple[str | None, str | None, Connectivity]:
+    op = data.get("operation_status")
+    operation_status = op if isinstance(op, str) else None
+    last_raw = data.get("last_seen_at")
+    last_seen_at = last_raw if isinstance(last_raw, str) else None
+    return operation_status, last_seen_at, connectivity_from_status(operation_status)
 
 
 def _resolve_device_id(
     db: FirestoreClient,
     user_id: str,
     params: ReadLatestTelemetryInput,
-) -> tuple[str, str | None, str]:
-    """Retorna (device_id, device_name, device_type)."""
+) -> tuple[str, str | None, str, str | None, str | None, Connectivity]:
+    """Retorna (device_id, device_name, device_type, operation_status, last_seen_at, connectivity)."""
     if params.device_id:
         snap = db.collection("devices").document(params.device_id).get()
         if not snap.exists:
@@ -50,10 +63,14 @@ def _resolve_device_id(
         device_type = data.get("device_type")
         if device_type not in ("sensor", "actuator"):
             raise ReadLatestTelemetryError("device_not_found")
+        op, last_seen, conn = _presence_from_doc(data)
         return (
             str(data.get("device_id") or snap.id),
             data.get("device_name"),
             device_type,
+            op,
+            last_seen,
+            conn,
         )
 
     if params.device_name and not params.device_name.strip():
@@ -74,7 +91,10 @@ def _resolve_device_id(
         if listed.total_returned > 1 or listed.has_more:
             raise ReadLatestTelemetryError("device_ambiguous")
         dev = listed.devices[0]
-        return dev.device_id, dev.device_name, dev.device_type
+        snap = db.collection("devices").document(dev.device_id).get()
+        data = snap.to_dict() if snap.exists else {}
+        op, last_seen, conn = _presence_from_doc(data or {})
+        return dev.device_id, dev.device_name, dev.device_type, op, last_seen, conn
 
     listed = devices_service.list_devices(
         db,
@@ -86,7 +106,10 @@ def _resolve_device_id(
     if listed.total_returned > 1 or listed.has_more:
         raise ReadLatestTelemetryError("device_required")
     dev = listed.devices[0]
-    return dev.device_id, dev.device_name, dev.device_type
+    snap = db.collection("devices").document(dev.device_id).get()
+    data = snap.to_dict() if snap.exists else {}
+    op, last_seen, conn = _presence_from_doc(data or {})
+    return dev.device_id, dev.device_name, dev.device_type, op, last_seen, conn
 
 
 def _latest_readings_batch(
@@ -148,7 +171,9 @@ def read_latest_telemetry(
     Raises:
         ReadLatestTelemetryError: device_not_found, device_ambiguous, device_required.
     """
-    device_id, device_name, device_type = _resolve_device_id(db, user_id, params)
+    device_id, device_name, device_type, operation_status, last_seen_at, connectivity = (
+        _resolve_device_id(db, user_id, params)
+    )
     device_ts, received_at, readings = _latest_readings_batch(db, device_id)
 
     log_event(
@@ -160,6 +185,7 @@ def read_latest_telemetry(
         device_id=device_id,
         readings_count=len(readings),
         has_telemetry=bool(readings),
+        connectivity=connectivity,
     )
 
     return ReadLatestTelemetryResult(
@@ -170,4 +196,7 @@ def read_latest_telemetry(
         received_at=received_at,
         readings=readings,
         has_telemetry=bool(readings),
+        operation_status=operation_status,
+        last_seen_at=last_seen_at,
+        connectivity=connectivity,
     )

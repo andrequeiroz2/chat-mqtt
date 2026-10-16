@@ -45,3 +45,30 @@ class ChatResponse(BaseModel):
     session_id: str
     persisted: bool
     suggested_ui: SuggestedUiAction | None = None
+
+
+class PostAdoptionRequest(BaseModel):
+    """Corpo de POST /api/v1/chat/post-adoption (turno zero 011-j)."""
+
+    session_id: str = Field(min_length=1, max_length=128)
+    device_id: str = Field(min_length=1, max_length=128)
+
+
+class PostAdoptionActionItem(BaseModel):
+    """Ação sugerida pós-adoção (chip na UI)."""
+
+    action_id: Literal["read_latest", "realtime", "list_devices", "actuator_help"]
+    label: str = Field(min_length=1, max_length=80)
+    prompt: str = Field(min_length=1, max_length=500)
+    disabled: bool = False
+
+
+class PostAdoptionResponse(BaseModel):
+    """Turno zero: foco de sessão + mensagem + chips."""
+
+    message: str
+    session_id: str
+    device_id: str
+    device_name: str | None = None
+    device_type: Literal["sensor", "actuator"]
+    actions: list[PostAdoptionActionItem] = Field(default_factory=list)

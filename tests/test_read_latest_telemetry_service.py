@@ -214,6 +214,32 @@ def test_read_latest_no_telemetry() -> None:
     assert result.readings == []
 
 
+def test_read_latest_includes_presence() -> None:
+    snap = _FakeSnapshot(
+        "dev-1",
+        {
+            "user_id": "user-a",
+            "device_id": "dev-1",
+            "device_name": "S",
+            "device_type": "sensor",
+            "model": "X",
+            "adopted_at": "2026-10-14T00:00:00Z",
+            "adoption_status": "adopted",
+            "operation_status": "offline",
+            "last_seen_at": "2026-10-14T01:00:00Z",
+        },
+    )
+    db = _FakeDb(_FakeDevicesCollection({"dev-1": _FakeDocRef(snap, [])}))
+    result = read_latest_telemetry(
+        db,  # type: ignore[arg-type]
+        "user-a",
+        ReadLatestTelemetryInput(device_id="dev-1"),
+    )
+    assert result.connectivity == "offline"
+    assert result.operation_status == "offline"
+    assert result.last_seen_at == "2026-10-14T01:00:00Z"
+
+
 def test_read_latest_device_required() -> None:
     db = _FakeDb(
         _FakeDevicesCollection(

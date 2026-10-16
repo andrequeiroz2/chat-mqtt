@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 from mqtt_chat.schemas.telemetry import ReadingItem
 
+Connectivity = Literal["online", "offline", "unknown"]
+
 
 class ReadLatestTelemetryInput(BaseModel):
     """Parâmetros opcionais para localizar o device."""
@@ -34,3 +36,6 @@ class ReadLatestTelemetryResult(BaseModel):
     received_at: str | None = None
     readings: list[ReadingItem] = Field(default_factory=list)
     has_telemetry: bool = False
+    operation_status: str | None = None
+    last_seen_at: str | None = None
+    connectivity: Connectivity = "unknown"

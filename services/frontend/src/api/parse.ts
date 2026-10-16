@@ -1,6 +1,6 @@
 import type { ApiErrorBody } from '../types/api'
 import type { AdoptionSession, AdoptionSessionStatus } from '../types/api/adoption'
-import type { ChatResponse } from '../types/api/chat'
+import type { ChatResponse, PostAdoptionResponse } from '../types/api/chat'
 import type { UserProfile } from '../types/api/user'
 
 const SESSION_STATUSES: AdoptionSessionStatus[] = [
@@ -114,6 +114,52 @@ export function assertUserProfile(value: unknown): UserProfile {
 export function assertChatResponse(value: unknown): ChatResponse {
   if (!isChatResponse(value)) {
     throw new Error('invalid_chat_response')
+  }
+  return value
+}
+
+const POST_ADOPTION_ACTION_IDS = [
+  'read_latest',
+  'realtime',
+  'list_devices',
+  'actuator_help',
+] as const
+
+function isPostAdoptionAction(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+  const id = value.action_id
+  const disabled = value.disabled
+  return (
+    isString(id) &&
+    (POST_ADOPTION_ACTION_IDS as readonly string[]).includes(id) &&
+    isString(value.label) &&
+    isString(value.prompt) &&
+    (disabled === undefined || typeof disabled === 'boolean')
+  )
+}
+
+export function isPostAdoptionResponse(value: unknown): value is PostAdoptionResponse {
+  if (!isRecord(value)) {
+    return false
+  }
+  const dtype = value.device_type
+  const actions = value.actions
+  return (
+    isString(value.message) &&
+    isString(value.session_id) &&
+    isString(value.device_id) &&
+    isOptionalNullableString(value.device_name) &&
+    (dtype === 'sensor' || dtype === 'actuator') &&
+    Array.isArray(actions) &&
+    actions.every(isPostAdoptionAction)
+  )
+}
+
+export function assertPostAdoptionResponse(value: unknown): PostAdoptionResponse {
+  if (!isPostAdoptionResponse(value)) {
+    throw new Error('invalid_post_adoption_response')
   }
   return value
 }

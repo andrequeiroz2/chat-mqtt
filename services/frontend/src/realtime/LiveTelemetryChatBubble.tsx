@@ -32,7 +32,8 @@ export function LiveTelemetryChatBubble({
           .join(' · ')
       : null
 
-  const title = deviceName ? `${deviceName} (${deviceId.slice(0, 8)}…)` : deviceId
+  const title = deviceName ?? 'Sensor'
+  const offlineBlocked = lastError === 'device_not_online_for_realtime'
 
   return (
     <div className="live-telemetry-bubble">
@@ -44,9 +45,14 @@ export function LiveTelemetryChatBubble({
         </button>
       </div>
       <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem' }}>
-        {connected ? 'Ao vivo' : 'Conectando…'}
-        {summary ? ` — ${summary}` : connected && !summary ? ' — aguardando telemetria' : ''}
-        {lastError && !connected ? ` (${lastError})` : ''}
+        {offlineBlocked
+          ? 'Sensor offline ou sem confirmação de presença — tempo real indisponível. Peça a última leitura no chat.'
+          : connected
+            ? 'Ao vivo'
+            : 'Conectando…'}
+        {!offlineBlocked && summary ? ` — ${summary}` : ''}
+        {!offlineBlocked && connected && !summary ? ' — aguardando telemetria' : ''}
+        {!offlineBlocked && lastError && !connected ? ` (${lastError})` : ''}
       </p>
     </div>
   )

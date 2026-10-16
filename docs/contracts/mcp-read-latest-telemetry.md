@@ -1,6 +1,6 @@
 # Contrato MCP — `read_latest_telemetry` (v1)
 
-> **Status:** Aprovado para implementação (006 — fatia telemetria)  
+> **Status:** v1.1 (011-m — presença na saída)  
 > **Normativo com:** [`docs/glossary.md`](../glossary.md), [`mcp-list-devices.md`](mcp-list-devices.md)  
 > **Fonte de dados:** Firestore `devices/{device_id}/telemetry` (documentos gravados pelo worker MQTT)
 
@@ -54,7 +54,10 @@ Responder perguntas como:
     { "metric": "temperature", "value": 23.4, "unit": "C" },
     { "metric": "humidity", "value": 61.2, "unit": "%" }
   ],
-  "has_telemetry": true
+  "has_telemetry": true,
+  "operation_status": "offline",
+  "last_seen_at": "2026-10-14T03:50:00Z",
+  "connectivity": "offline"
 }
 ```
 
@@ -62,6 +65,11 @@ Responder perguntas como:
 |-------|-----------|
 | `readings` | Todas as métricas do **mesmo evento** (`received_at` mais recente na subcoleção) |
 | `has_telemetry` | `false` se subcoleção vazia (device existe, ainda sem ingestão) |
+| `operation_status` | Valor bruto em `devices` (`online` / `offline` / null) |
+| `last_seen_at` | Última atividade conhecida (telemetria/status) |
+| `connectivity` | `online` \| `offline` \| `unknown` — derivado: ausente ou ≠ `online` → não tratar como ao vivo (G11/G12) |
+
+**Offline (G11):** `has_telemetry=true` ainda retorna leituras **históricas**; o agente **deve** alertar que não são ao vivo usando `connectivity` + `received_at`.
 
 ---
 
@@ -90,3 +98,4 @@ agent/device_tools.py          → mesmo service
 | Data | Alteração |
 |------|-----------|
 | 2026-10-14 | v1 — contrato inicial |
+| 2026-10-16 | v1.1 — presença (`operation_status`, `last_seen_at`, `connectivity`) |

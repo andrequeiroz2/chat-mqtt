@@ -74,6 +74,16 @@ async def realtime_websocket(
         await websocket.close(code=4404, reason="device_not_found")
         return
 
+    if device_id:
+        settings = get_settings()
+        db = get_firestore_client(settings)
+        if db is not None:
+            snap = db.collection("devices").document(device_id).get()
+            data = (snap.to_dict() or {}) if snap.exists else {}
+            if data.get("operation_status") != "online":
+                await websocket.close(code=4409, reason="device_not_online_for_realtime")
+                return
+
     await websocket.accept()
     hub = get_realtime_hub()
     sub = await hub.register(

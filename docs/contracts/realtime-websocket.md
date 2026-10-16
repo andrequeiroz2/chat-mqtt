@@ -45,6 +45,7 @@ Envelope comum:
 - Token validado com Admin SDK (mesmo que HTTP Bearer).
 - Eventos **sempre** filtrados pelo `user_id` do token; nunca cross-tenant.
 - `device_id` na query: 404 lógico → fechar WS com código **4404** se device não for do usuário.
+- `device_id` presente e `operation_status` ≠ `online` → fechar WS com **4409** `device_not_online_for_realtime` (G12).
 
 ---
 
@@ -59,3 +60,4 @@ Hook `useRealtimeStream` em `services/frontend/src/realtime/` — URL base de `V
 | Data | Alteração |
 |------|-----------|
 | 2026-10-14 | v1 — telemetria + status |
+| 2026-10-16 | Guard offline WS 4409 (011-n) |

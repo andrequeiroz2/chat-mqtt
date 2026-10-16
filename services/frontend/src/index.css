@@ -229,3 +229,19 @@ body {
 .adopt-panel-progress .muted {
   margin: 0;
 }
+
+.post-adoption-wrap p {
+  margin: 0 0 0.65rem;
+}
+
+.post-adoption-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.post-adoption-chip {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}

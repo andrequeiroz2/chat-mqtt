@@ -35,7 +35,7 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | **Broker** / **broker MQTT** | `broker` | Servidor de mensagens MQTT. **Implementação obrigatória:** Eclipse Mosquitto (`eclipse-mosquitto:2`). Metadados: `host`, `port`, credenciais — espelho conceitual de `mqtt_brokers` no `device_app`. **Não** confundir com `device`: broker é infraestrutura; device é endpoint. |
 | **Cliente MQTT (backend)** | `mqtt_client` / worker | Processo Python (backend) que assina/publica no broker; **não** é o embarcado. |
 | **Telemetria** | `telemetry` | Dados enviados pelo device (leituras). Tópico: `.../telemetry`. Persistência: **Firestore** (subcoleção por `device_id`), **não** SQLite/`mqtt_messages`. |
-| **Comando** | `command` | Ordem ao atuador. Tópico: `.../commands`. |
+| **Comando** | `command` | Ordem ao atuador. Tópico: `.../commands`. MVP binário: `value` **0** (off) ou **1** (on) — [`actuator-binary-command.md`](contracts/actuator-binary-command.md). |
 | **Estado** / **ACK** | `state` | Confirmação ou estado reportado pelo device. Tópico: `.../state`. |
 | **Proprietário** | `owner` / `user_id` | Usuário associado ao device após cadastro ou adoção. |
 | **Adoção** | `adoption` / `adopt` | **Única forma** de **incluir** um device na conta do usuário (registro lógico + commit Firestore/MQTT). QR → sessão → handshake → ack → commit. Ver [`docs/contracts/device-adoption.md`](contracts/device-adoption.md) §4. **Não** existe cadastro paralelo via chat/MCP. |
@@ -43,6 +43,10 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | **Token de adoção** | `claim_token` | String opaca no QR; **não** é senha MQTT. Estado **`bound`** enquanto device adotado; **pode** reutilizar após remoção/reset (contrato §3.2). |
 | **Provisionamento** | `provisioning` | Criação de credenciais MQTT + ACL no Mosquitto após adoção. |
 | **Inquilino** (multi-tenant) | `tenant` | Namespace lógico; na PoC pode coincidir com `user_id`. Tópico: `tenants/{user_id}/...`. |
+| **Foco de sessão** (chat) | `session_focus_device_id` | Device implicitamente em pauta na sessão de chat; ver [`docs/chat-conversational-policy.md`](chat-conversational-policy.md). |
+| **Snapshot de sessão** (chat) | `conversation_context` / `device_snapshot` | Metadados enxutos de devices (sem telemetria) no doc `chat_sessions`; ver task [011](../task/011-chat-session-context-policy.md). |
+| **Status de operação** | `operation_status` | Presença lógica do device (`online` \| `offline`); MQTT `.../status` + LWT. Ausente no MVP conversacional = conectividade **desconhecida**, não assumir online. |
+| **Política conversacional** | *(doc)* | Regras TomatoIA: [`docs/chat-conversational-policy.md`](chat-conversational-policy.md). |
 
 ---
 
@@ -99,3 +103,4 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | 2026-10-10 | Telemetria: persistência Firestore only (sem espelho `mqtt_messages`) |
 | 2026-10-10 | `identity_provider`, `user_profile`; tools opcionais de perfil (task 006) |
 | 2026-10-11 | **TomatoIA** — assistente/marca (task 007) |
+| 2026-10-15 | Foco/snapshot de sessão, `operation_status` (chat); link policy task 011 |

@@ -151,6 +151,12 @@ def register_device_tools(agent: Agent[UserDeps, ChatTurnResult]) -> None:
         except telemetry_queries_service.ReadLatestTelemetryError as exc:
             raise ValueError(exc.code) from exc
 
+        snap = ctx.deps.db.collection("devices").document(resolved_id).get()
+        data = snap.to_dict() if snap.exists else {}
+        status = data.get("operation_status")
+        if status != "online":
+            raise ValueError("device_not_online_for_realtime")
+
         ctx.deps.suggested_ui = SuggestedUiAction(
             kind="realtime_telemetry",
             device_id=resolved_id,

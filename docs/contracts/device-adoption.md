@@ -55,6 +55,14 @@ Registro **definitivo** do device adotado. **Não** criar documento aqui no scan
 | `adopted_at` | timestamp | sim | Momento do commit |
 | `created_at` | timestamp | sim | Igual ou próximo de `adopted_at` |
 | `updated_at` | timestamp | sim | |
+| `operation_status` | `"online"` \| `"offline"` \| omitido | opcional | Ingerido de `.../status` (LWT → offline); ausente = presença desconhecida no chat |
+| `last_seen_at` | string ISO UTC | opcional | Atualizado em telemetria/status/state |
+| `last_command` | object | opcional atuador | Espelho do último payload publicado em `.../commands` (≤ 1 KiB JSON) — ver [`actuator-binary-command.md`](actuator-binary-command.md) |
+| `last_command_at` | string ISO UTC | opcional atuador | Momento do último `publish_command` / confirmação G10 |
+| `last_reported_state` | object | opcional | Resumo do último MQTT `.../state` (≤ 2 KiB) — worker [011-i](../task/011-chat-session-context-policy.md) |
+| `last_reported_state_at` | string ISO UTC | opcional | Timestamp da ingestão do state acima |
+
+**Precedência (copy TomatoIA):** `last_command` descreve o que a **plataforma** enviou; `last_reported_state` reflete o que o **firmware** reportou. Em conflito, não assumir sucesso silencioso — citar ambos ou pedir nova leitura de state.
 
 **Índices recomendados:** `mac_address` (unique entre `adopted`), `mqtt_topic_base` (unique), `user_id`.
 

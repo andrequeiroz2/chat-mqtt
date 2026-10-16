@@ -16,6 +16,7 @@ from mqtt_chat.api.routes import adopt as adopt_routes
 from mqtt_chat.api.routes import chat as chat_routes
 from mqtt_chat.api.routes import me as me_routes
 from mqtt_chat.api.routes import realtime as realtime_routes
+from mqtt_chat import runtime as app_runtime
 from mqtt_chat.server import build_mcp_server
 from mqtt_chat.realtime.hub import get_realtime_hub
 from mqtt_chat.worker.monitor import WorkerHealth, run_with_reconnect
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
 
     app.state.worker_health = health
     app.state.publish_queue = publish_queue
+    app_runtime.publish_queue = publish_queue
     app.state.realtime_hub = get_realtime_hub()
 
     worker_task = asyncio.create_task(
@@ -53,6 +55,7 @@ async def lifespan(app: FastAPI):
     yield
 
     stop_event.set()
+    app_runtime.publish_queue = None
     worker_task.cancel()
     try:
         await worker_task

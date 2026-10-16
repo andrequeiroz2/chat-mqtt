@@ -9,11 +9,13 @@ const MESSAGES: Record<string, string> = {
   invalid_user_profile_response:
     'Resposta de /me inesperada. Atualize front e back na mesma versão.',
   chat_model_not_configured:
-    'Chat indisponível: defina GOOGLE_API_KEY no .env da raiz e reinicie mqtt-chat-api.',
+    'Chat indisponível: ajuste CHAT_MODEL e a chave do provedor (GOOGLE_API_KEY para google:… ou OPENAI_API_KEY para openai:…) no .env da raiz e reinicie mqtt-chat-api.',
   chat_model_unavailable:
-    'Modelo Gemini não existe ou foi descontinuado. No .env da raiz use CHAT_MODEL=google:gemini-3.5-flash e reinicie a API.',
+    'Modelo de chat indisponível ou id inválido em CHAT_MODEL. Confira o provedor (google:… / openai:…) e reinicie a API.',
   chat_model_busy:
-    'Gemini temporariamente indisponível (503). Aguarde e tente de novo; se persistir, CHAT_MODEL=google:gemini-3.7-flash no .env da raiz.',
+    'Provedor do modelo temporariamente indisponível (503). Aguarde e tente de novo.',
+  chat_turn_limit_exceeded:
+    'Esta pergunta exigiu muitas etapas no assistente (limite por turno). Reformule de forma mais simples ou peça uma coisa de cada vez.',
   missing_authentication: 'Sessão inválida. Tente entrar de novo.',
   invalid_token: 'Token rejeitado pelo servidor. Verifique o projeto Firebase (mesmo projectId no front e back).',
 }

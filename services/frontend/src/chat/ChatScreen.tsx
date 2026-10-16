@@ -8,8 +8,10 @@ import type { ChatMessage } from '../types/chat-ui'
 import { getOrCreateChatSessionId } from './session'
 import { AdoptWizardPanel, type AdoptWizardPhase } from './adopt/AdoptWizardPanel'
 import { isAdoptionIntent } from './adopt/intent'
+import { PostAdoptionActions } from './adopt/PostAdoptionActions'
 import { LiveTelemetryChatBubble } from '../realtime/LiveTelemetryChatBubble'
 import { POST_SUCCESS_MENU, PRECHECK_ASSISTANT } from './adopt/progressCopy'
+import type { ChatResponse } from '../types/api/chat'
 
 export function ChatScreen() {
   const { profile, api, actions, getAccessToken } = useSignedInAuth()
@@ -32,26 +34,47 @@ export function ChatScreen() {
     setAdoptPhase(null)
   }, [])
 
-  const onSubmit = useCallback(
-    async (event: SubmitEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      const text = draft.trim()
-      if (!text || sending) {
+  const appendChatResponse = useCallback((response: ChatResponse) => {
+    setMessages((prev) => {
+      const next: ChatMessage[] = [
+        ...prev,
+        { id: crypto.randomUUID(), role: 'assistant', text: response.reply },
+      ]
+      const ui = response.suggested_ui
+      if (ui?.kind === 'realtime_telemetry') {
+        const withoutLive = next.filter((m) => m.role !== 'live_telemetry')
+        return [
+          ...withoutLive,
+          {
+            id: crypto.randomUUID(),
+            role: 'live_telemetry',
+            deviceId: ui.device_id,
+            deviceName: ui.device_name ?? null,
+          },
+        ]
+      }
+      return next
+    })
+  }, [])
+
+  const sendChatMessage = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed || sending) {
         return
       }
 
-      setDraft('')
       setError(null)
       setSending(true)
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'user',
-        text,
+        text: trimmed,
       }
       setMessages((prev) => [...prev, userMsg])
 
-      if (isAdoptionIntent(text) && adoptPhase === null) {
+      if (isAdoptionIntent(trimmed) && adoptPhase === null) {
         appendAssistant(PRECHECK_ASSISTANT)
         setAdoptPhase('precheck')
         setSending(false)
@@ -59,27 +82,8 @@ export function ChatScreen() {
       }
 
       try {
-        const response = await api.postChat({ message: text, session_id: sessionId })
-        setMessages((prev) => {
-          const next = [
-            ...prev,
-            { id: crypto.randomUUID(), role: 'assistant' as const, text: response.reply },
-          ]
-          const ui = response.suggested_ui
-          if (ui?.kind === 'realtime_telemetry') {
-            const withoutLive = next.filter((m) => m.role !== 'live_telemetry')
-            return [
-              ...withoutLive,
-              {
-                id: crypto.randomUUID(),
-                role: 'live_telemetry' as const,
-                deviceId: ui.device_id,
-                deviceName: ui.device_name ?? null,
-              },
-            ]
-          }
-          return next
-        })
+        const response = await api.postChat({ message: trimmed, session_id: sessionId })
+        appendChatResponse(response)
       } catch (err) {
         const code = err instanceof ApiError ? err.detail : 'chat_failed'
         setError(formatAuthError(code) ?? code)
@@ -87,12 +91,51 @@ export function ChatScreen() {
         setSending(false)
       }
     },
-    [api, adoptPhase, appendAssistant, draft, sending, sessionId],
+    [adoptPhase, appendAssistant, appendChatResponse, api, sending, sessionId],
   )
 
-  const handleAdoptTerminal = useCallback(() => {
-    appendAssistant(POST_SUCCESS_MENU)
-  }, [appendAssistant])
+  const onSubmit = useCallback(
+    async (event: SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      const text = draft.trim()
+      if (!text || sending) {
+        return
+      }
+      setDraft('')
+      await sendChatMessage(text)
+    },
+    [draft, sendChatMessage, sending],
+  )
+
+  const handlePostAdoption = useCallback(
+    async (deviceId: string | null | undefined) => {
+      if (!deviceId) {
+        appendAssistant(POST_SUCCESS_MENU)
+        return
+      }
+      setError(null)
+      try {
+        const response = await api.postChatPostAdoption({
+          session_id: sessionId,
+          device_id: deviceId,
+        })
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: 'post_adoption',
+            text: response.message,
+            actions: response.actions,
+          },
+        ])
+      } catch (err) {
+        const code = err instanceof ApiError ? err.detail : 'post_adoption_failed'
+        setError(formatAuthError(code) ?? code)
+        appendAssistant(POST_SUCCESS_MENU)
+      }
+    },
+    [api, appendAssistant, sessionId],
+  )
 
   return (
     <div className="chat-shell">
@@ -124,6 +167,15 @@ export function ChatScreen() {
                 }
               />
             </li>
+          ) : msg.role === 'post_adoption' ? (
+            <li key={msg.id} className="chat-bubble assistant post-adoption-wrap">
+              <p>{msg.text}</p>
+              <PostAdoptionActions
+                actions={msg.actions}
+                disabled={sending}
+                onSelect={(prompt) => void sendChatMessage(prompt)}
+              />
+            </li>
           ) : (
             <li key={msg.id} className={`chat-bubble ${msg.role}`}>
               {msg.text}
@@ -139,7 +191,7 @@ export function ChatScreen() {
           onPhaseChange={(phase, meta) => {
             setAdoptPhase(phase)
             if (phase === 'done' && meta?.committed) {
-              handleAdoptTerminal()
+              void handlePostAdoption(meta.deviceId)
             }
           }}
           onAssistantLine={appendAssistant}

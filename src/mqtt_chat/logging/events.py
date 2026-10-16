@@ -37,6 +37,7 @@ USER_PROFILE_CREATED = "user.profile.created"
 USER_PROFILE_UPDATED = "user.profile.updated"
 CHAT_TURN_PERSISTED = "chat.turn.persisted"
 CHAT_TURN_OFF_TOPIC = "chat.turn.off_topic"
+CHAT_RESOLVER_OUTCOME = "chat.resolver.outcome"
 
 # MCP
 MCP_TOOL_CALL = "mcp.tool.call"
