@@ -284,7 +284,7 @@ Mesmo com um único usuário na PoC, usar tópicos namespaced:
 | Cliente MQTT | aiomqtt ou paho-mqtt | Conforme [MQTT spec](https://mqtt.org/mqtt-specification/); worker assíncrono no mesmo processo ou task dedicada |
 | Persistência | **Firebase** | Ver mapeamento abaixo |
 | Agente / LLM | **Pydantic AI** (`pydantic-ai`) + provedor via env | `Agent` + tools; MCP capability opcional apontando ao FastMCP; Graph para multi-step |
-| Frontend PoC | A definir | Chat + `message.kind === "timeseries"` para gráficos |
+| Frontend | **React 19** + **Vite** + **Tailwind CSS 4** + **[shadcn/ui](https://ui.shadcn.com/)** + **Recharts 3** | Dark first, paleta **zinc** (referência site shadcn); [012](../task/012-frontend-modern-ui-stack.md); bootstrap → 013; gráficos → 014 |
 | Broker MQTT | **Mosquitto** (container) | Ver §4.1; não usar EMQX na stack planejada |
 | Infra local | docker-compose | Mosquitto + backend + simulador de device |
 
@@ -308,7 +308,7 @@ Produtos Firebase a confirmar na PoC; proposta inicial alinhada ao domínio de `
 
 ### 6.2 Estrutura de pacotes alvo (espelho mcp-sport)
 
-**Monorepo:** o **frontend** é microserviço em [`services/frontend/`](../services/frontend/) (React/Vite, Firebase Auth Web, `.env` próprio). Comunicação com o backend **somente HTTP** (`/api/v1/*`); sem importar código Python.
+**Monorepo:** o **frontend** é microserviço em [`services/frontend/`](../services/frontend/) (React/Vite, Tailwind CSS, Recharts, Firebase Auth Web, `.env` próprio). Comunicação com o backend **somente HTTP** (`/api/v1/*`); sem importar código Python.
 
 ```
 services/
@@ -417,12 +417,14 @@ _Use esta seção para ir refinando requisitos, restrições de negócio, modelo
 | 2026-10-10 | Task [004](../task/004-mqtt-worker.md) worker MQTT **aprovada** para implementação |
 | 2026-10-10 | Task [005](../task/005-structured-logging.md) política de logging JSON / OTel-friendly |
 | 2026-10-10 | Logs ≠ métricas de desempenho; latência/throughput → OTel Metrics (futuro) |
+| 2026-10-16 | Frontend: **Tailwind CSS 4** + **Recharts 3** adotados; agente permanece Pydantic AI (sem CopilotKit runtime) |
+| 2026-10-17 | UI: referência visual shadcn.com — **dark first**, superfícies **card/muted** (zinc); shadcn **new-york** |
 
 ### Notas e pendências
 
 - ~~Definir quais produtos Firebase na PoC (Auth + Firestore mínimo?)~~ → **Auth Google (MVP) + Firestore `users`**; GitHub depois — ver [task 006](../task/006-user-auth-chat-mcp.md).
 - Versão MQTT do broker/firmware: 3.1.1 vs 5.0 (Mosquitto suporta ambos conforme config).
-- Frontend do chat (stack) ainda não definido.
+- ~~Frontend do chat (stack) ainda não definido.~~ → **Tailwind + shadcn/ui (dark/zinc) + Recharts** ([task 012](../task/012-frontend-modern-ui-stack.md)); implementação e drawer de sessões → tasks 013/015.
 
 ### Requisitos funcionais (rascunho)
 

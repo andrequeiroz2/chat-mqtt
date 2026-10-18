@@ -41,6 +41,7 @@ def _build_system_prompt(display_name: str, *, history_empty: bool) -> str:
         "use read_latest_telemetry (prefira device_name; nunca cite device_id UUID ao usuário). "
         "Para ver valores em tempo real, stream contínuo ou monitorar ao vivo no chat, "
         "use start_realtime_telemetry (mesmos parâmetros de device). "
+        "Para gráfico ou histórico (ex.: última semana, tendência), use get_telemetry_history. "
         "Nunca invente números de telemetria. "
         "Endereço MAC e IP local do device não estão nas tools — não chame list_devices em loop; "
         "perguntas sobre MAC/IP são escopo produto (explique limites), não off_topic. "

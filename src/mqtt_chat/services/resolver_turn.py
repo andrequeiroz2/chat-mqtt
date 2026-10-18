@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
+import unicodedata
 from typing import TYPE_CHECKING
 
 from mqtt_chat.logging import events, log_event
-from mqtt_chat.schemas.chat import ChatScope, SuggestedUiAction
+from mqtt_chat.schemas.chat import ChatScope, RealtimeTelemetrySuggestedUi, SuggestedUiAction
 from mqtt_chat.schemas.actuator_command import PendingActuatorCommand
 from mqtt_chat.schemas.conversation_context import ConversationContext, DeviceSnapshotEntry
 from mqtt_chat.schemas.device_intent import DeviceIntentResolverResult
-from mqtt_chat.schemas.telemetry_tools import ReadLatestTelemetryInput
+from mqtt_chat.schemas.telemetry_tools import ReadLatestTelemetryInput, TelemetryHistoryInput
 from mqtt_chat.services import conversation_templates as templates
 from mqtt_chat.services import telemetry_queries as telemetry_queries_service
 from mqtt_chat.schemas.turn_outcome import TurnOutcome
@@ -118,6 +120,87 @@ def _reply_mqtt_topics(
         operation_status=entry.operation_status,
         readings_block=readings_block,
     )
+
+
+def _normalize_resolver_text(value: str) -> str:
+    folded = unicodedata.normalize("NFKD", value.casefold())
+    return "".join(ch for ch in folded if not unicodedata.combining(ch))
+
+
+def _history_days_from_message(message: str) -> int:
+    text = _normalize_resolver_text(message)
+    match = re.search(r"ultimos\s+(\d+)\s+dias", text)
+    if match:
+        return max(1, min(30, int(match.group(1))))
+    if re.search(r"ultim[oa]\s+dia\b", text):
+        return 1
+    if "semana" in text or "7 dias" in text:
+        return 7
+    return 7
+
+
+def _history_last_day_with_data(message: str) -> bool:
+    text = _normalize_resolver_text(message)
+    return bool(
+        re.search(r"ultim[oa]\s+dia.*registr", text)
+        or re.search(r"dia em que existem registr", text)
+        or re.search(r"ultim[oa]\s+dia em que", text)
+    )
+
+
+def _history_metric_from_message(message: str) -> str | None:
+    text = _normalize_resolver_text(message)
+    if "temperatura" in text or "temperature" in text:
+        return "temperature"
+    if "umidade" in text or "humidity" in text:
+        return "humidity"
+    return None
+
+
+def _reply_from_history_execute(
+    db: FirestoreClient,
+    user_id: str,
+    resolved: DeviceIntentResolverResult,
+    user_message: str,
+) -> tuple[SuggestedUiAction | None, str]:
+    last_day = _history_last_day_with_data(user_message)
+    params = TelemetryHistoryInput(
+        device_id=resolved.device_id,
+        metric=_history_metric_from_message(user_message),
+        days=30 if last_day else _history_days_from_message(user_message),
+        last_day_with_data=last_day,
+    )
+    try:
+        result, chart_ui = telemetry_queries_service.get_telemetry_history(
+            db,
+            user_id,
+            params,
+        )
+    except telemetry_queries_service.ReadLatestTelemetryError as exc:
+        if exc.code == "telemetry_history_empty":
+            label = templates.display_device_name(resolved.device_name, device_type="sensor")
+            return (
+                None,
+                f"Não há leituras no período para montar o gráfico do sensor **{label}**. "
+                "Confirme se o simulador ou device já enviou telemetria nos últimos dias.",
+            )
+        return (
+            None,
+            "Não consegui obter o histórico desse dispositivo. "
+            "Verifique o nome na sua lista ou tente de novo.",
+        )
+
+    label = templates.display_device_name(result.device_name, device_type="sensor")
+    metric_pt = {"temperature": "temperatura", "humidity": "umidade"}.get(
+        result.metric,
+        result.metric,
+    )
+    unit_suffix = f" {result.unit}" if result.unit else ""
+    reply = (
+        f"Abri o gráfico de **{metric_pt}{unit_suffix}** do sensor **{label}** "
+        f"({result.period_label}, {result.point_count} pontos)."
+    )
+    return chart_ui, reply
 
 
 def _reply_from_read_execute(
@@ -240,9 +323,15 @@ def execute_resolver_turn(
             reply = _reply_from_clarify(resolved)
     elif resolved.outcome == "execute" and resolved.intent == "read_telemetry":
         reply = _reply_from_read_execute(db, deps.user_id, resolved, entry)
+    elif resolved.outcome == "execute" and resolved.intent == "telemetry_history":
+        suggested, reply = _reply_from_history_execute(
+            db,
+            deps.user_id,
+            resolved,
+            user_message,
+        )
     elif resolved.outcome == "execute" and resolved.intent == "realtime":
-        suggested = SuggestedUiAction(
-            kind="realtime_telemetry",
+        suggested = RealtimeTelemetrySuggestedUi(
             device_id=resolved.device_id or "",
             device_name=resolved.device_name,
         )

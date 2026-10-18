@@ -57,15 +57,43 @@ export function normalizeUserProfile(value: UserProfile): UserProfile {
   }
 }
 
+function isChartPoint(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.received_at) &&
+    typeof value.value === 'number' &&
+    Number.isFinite(value.value)
+  )
+}
+
 function isSuggestedUiAction(value: unknown): boolean {
   if (!isRecord(value)) {
     return false
   }
-  if (value.kind !== 'realtime_telemetry' || !isString(value.device_id)) {
+  const name = value.device_name
+  const nameOk = name === null || name === undefined || isString(name)
+  if (!nameOk || !isString(value.device_id)) {
     return false
   }
-  const name = value.device_name
-  return name === null || name === undefined || isString(name)
+  if (value.kind === 'realtime_telemetry') {
+    return true
+  }
+  if (value.kind !== 'telemetry_chart') {
+    return false
+  }
+  if (
+    !isString(value.metric) ||
+    !isString(value.period_label) ||
+    !Array.isArray(value.points) ||
+    value.points.length === 0
+  ) {
+    return false
+  }
+  const unit = value.unit
+  if (unit !== null && unit !== undefined && !isString(unit)) {
+    return false
+  }
+  return value.points.every(isChartPoint)
 }
 
 export function isChatResponse(value: unknown): value is ChatResponse {

@@ -7,11 +7,28 @@ export type ChatRequest = {
   session_id: string
 }
 
-export type SuggestedUiAction = {
+export type TelemetryChartPoint = {
+  received_at: string
+  value: number
+}
+
+export type RealtimeTelemetrySuggestedUi = {
   kind: 'realtime_telemetry'
   device_id: string
   device_name: string | null
 }
+
+export type TelemetryChartSuggestedUi = {
+  kind: 'telemetry_chart'
+  device_id: string
+  device_name: string | null
+  metric: string
+  unit: string | null
+  period_label: string
+  points: TelemetryChartPoint[]
+}
+
+export type SuggestedUiAction = RealtimeTelemetrySuggestedUi | TelemetryChartSuggestedUi
 
 export type ChatResponse = {
   reply: string

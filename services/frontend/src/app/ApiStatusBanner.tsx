@@ -22,9 +22,12 @@ export function ApiStatusBanner() {
   }
 
   return (
-    <div className="api-banner" role="status">
-      Backend offline — na raiz do repo rode <code>uv run mqtt-chat-api</code> e confira{' '}
-      <code>VITE_API_BASE_URL</code> (ex.: http://127.0.0.1:8000).
+    <div
+      className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+      role="status"
+    >
+      Backend offline — na raiz do repo rode <code className="text-xs">uv run mqtt-chat-api</code>{' '}
+      e confira <code className="text-xs">VITE_API_BASE_URL</code> (ex.: http://127.0.0.1:8000).
     </div>
   )
 }

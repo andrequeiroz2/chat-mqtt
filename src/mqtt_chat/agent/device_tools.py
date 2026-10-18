@@ -9,12 +9,14 @@ from pydantic_ai import Agent, RunContext
 
 from mqtt_chat.agent.deps import UserDeps
 from mqtt_chat.logging import events, log_event
-from mqtt_chat.schemas.chat import ChatTurnResult, SuggestedUiAction
+from mqtt_chat.schemas.chat import ChatTurnResult, RealtimeTelemetrySuggestedUi
 from mqtt_chat.schemas.devices import ListDevicesInput, ListDevicesResult
 from mqtt_chat.schemas.telemetry_tools import (
+    GetTelemetryHistoryResult,
     ReadLatestTelemetryInput,
     ReadLatestTelemetryResult,
     StartRealtimeTelemetryResult,
+    TelemetryHistoryInput,
 )
 from mqtt_chat.services import devices as devices_service
 from mqtt_chat.services import telemetry_queries as telemetry_queries_service
@@ -157,8 +159,7 @@ def register_device_tools(agent: Agent[UserDeps, ChatTurnResult]) -> None:
         if status != "online":
             raise ValueError("device_not_online_for_realtime")
 
-        ctx.deps.suggested_ui = SuggestedUiAction(
-            kind="realtime_telemetry",
+        ctx.deps.suggested_ui = RealtimeTelemetrySuggestedUi(
             device_id=resolved_id,
             device_name=resolved_name,
         )
@@ -166,3 +167,49 @@ def register_device_tools(agent: Agent[UserDeps, ChatTurnResult]) -> None:
             device_id=resolved_id,
             device_name=resolved_name,
         )
+
+    @agent.tool
+    def get_telemetry_history(
+        ctx: RunContext[UserDeps],
+        device_id: str | None = None,
+        device_name: str | None = None,
+        device_name_match: Literal["contains", "exact"] = "contains",
+        metric: str | None = None,
+        days: int = 7,
+    ) -> GetTelemetryHistoryResult:
+        """Obtém histórico de telemetria para exibir gráfico no chat.
+
+        Use quando o usuário pedir gráfico, tendência, histórico, últimos dias/semana,
+        evolução de temperatura ou umidade ao longo do tempo.
+
+        Parâmetros opcionais: device_id, device_name (+ device_name_match), metric
+        (ex.: temperature), days (1–30, padrão 7).
+
+        Após chamar, confirme na reply que o gráfico foi aberto no chat.
+        """
+        log_event(
+            logger,
+            logging.INFO,
+            events.MCP_TOOL_CALL,
+            "get_telemetry_history invoked (chat agent)",
+            tool="get_telemetry_history",
+            user_id=ctx.deps.user_id,
+        )
+        params = TelemetryHistoryInput(
+            device_id=device_id,
+            device_name=device_name,
+            device_name_match=device_name_match,
+            metric=metric,
+            days=days,
+        )
+        try:
+            result, chart_ui = telemetry_queries_service.get_telemetry_history(
+                ctx.deps.db,
+                ctx.deps.user_id,
+                params,
+            )
+        except telemetry_queries_service.ReadLatestTelemetryError as exc:
+            raise ValueError(exc.code) from exc
+        if chart_ui is not None:
+            ctx.deps.suggested_ui = chart_ui
+        return result

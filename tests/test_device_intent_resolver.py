@@ -55,6 +55,26 @@ def test_detect_read_and_realtime_intents() -> None:
     assert detect_chat_intent("como está o bitcoin") is None
 
 
+def test_detect_telemetry_history_before_read() -> None:
+    assert (
+        detect_chat_intent("mostra um gráfico da temperatura dos últimos 7 dias")
+        == "telemetry_history"
+    )
+    assert detect_chat_intent("histórico de umidade na última semana") == "telemetry_history"
+
+
+def test_g1_single_sensor_history() -> None:
+    snap = [_sensor("s1", "Meu sensor")]
+    result = resolve_device_intent(
+        "mostra um gráfico da temperatura dos últimos 7 dias",
+        _ctx(snapshot=snap),
+    )
+    assert result.outcome == "execute"
+    assert result.intent == "telemetry_history"
+    assert result.trigger_id == "G1"
+    assert result.device_id == "s1"
+
+
 def test_connectivity_unknown_when_status_missing() -> None:
     assert connectivity_from_status(None) == "unknown"
     assert connectivity_from_status("online") == "online"

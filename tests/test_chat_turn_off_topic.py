@@ -1,7 +1,7 @@
 """Regras de turno — off-topic não propaga UI."""
 
 from mqtt_chat.agent.tomato_ia import OFF_TOPIC_REPLY
-from mqtt_chat.schemas.chat import ChatTurnResult, SuggestedUiAction
+from mqtt_chat.schemas.chat import ChatTurnResult, RealtimeTelemetrySuggestedUi
 from mqtt_chat.services.chat_turn import finalize_turn
 
 
@@ -12,7 +12,7 @@ def test_finalize_turn_off_topic_strips_suggested_ui_at_call_site() -> None:
     assert outcome.reply == OFF_TOPIC_REPLY
     assert outcome.persist is False
     suggested_ui = (
-        SuggestedUiAction(kind="realtime_telemetry", device_id="x", device_name="Meu sensor")
+        RealtimeTelemetrySuggestedUi(device_id="x", device_name="Meu sensor")
         if outcome.scope == "product"
         else None
     )

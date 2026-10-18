@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import type { PostAdoptionAction } from '../../types/api/chat'
 
 type Props = {
@@ -11,22 +12,21 @@ export function PostAdoptionActions({ actions, disabled, onSelect }: Props) {
     return null
   }
   return (
-    <div className="post-adoption-actions" role="group" aria-label="Próximas ações">
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Próximas ações">
       {actions.map((action) => (
-        <button
+        <Button
           key={action.action_id}
           type="button"
-          className="btn secondary post-adoption-chip"
+          variant="secondary"
+          size="sm"
           disabled={disabled || action.disabled === true}
           title={
-            action.disabled
-              ? 'Disponível quando o sensor estiver online'
-              : undefined
+            action.disabled ? 'Disponível quando o sensor estiver online' : undefined
           }
           onClick={() => onSelect(action.prompt)}
         >
           {action.label}
-        </button>
+        </Button>
       ))}
     </div>
   )

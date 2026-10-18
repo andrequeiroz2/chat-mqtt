@@ -7,15 +7,36 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 ChatScope = Literal["product", "off_topic"]
-SuggestedUiKind = Literal["realtime_telemetry"]
 
 
-class SuggestedUiAction(BaseModel):
-    """Hint para o frontend montar widget (RF-009); não executa MQTT."""
+class RealtimeTelemetrySuggestedUi(BaseModel):
+    """Hint: WebSocket ao vivo no chat."""
 
-    kind: SuggestedUiKind
+    kind: Literal["realtime_telemetry"] = "realtime_telemetry"
     device_id: str = Field(min_length=1)
     device_name: str | None = None
+
+
+class TelemetryChartPoint(BaseModel):
+    """Um ponto da série temporal."""
+
+    received_at: str = Field(min_length=1)
+    value: float
+
+
+class TelemetryChartSuggestedUi(BaseModel):
+    """Hint: gráfico Recharts embutido no thread."""
+
+    kind: Literal["telemetry_chart"] = "telemetry_chart"
+    device_id: str = Field(min_length=1)
+    device_name: str | None = None
+    metric: str = Field(min_length=1)
+    unit: str | None = None
+    period_label: str = Field(min_length=1, max_length=16)
+    points: list[TelemetryChartPoint] = Field(min_length=1, max_length=500)
+
+
+SuggestedUiAction = RealtimeTelemetrySuggestedUi | TelemetryChartSuggestedUi
 
 
 class ChatRequest(BaseModel):

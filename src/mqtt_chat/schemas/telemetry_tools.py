@@ -26,6 +26,33 @@ class StartRealtimeTelemetryResult(BaseModel):
     device_name: str | None = None
 
 
+class TelemetryHistoryInput(BaseModel):
+    """Parâmetros para histórico / gráfico."""
+
+    device_id: str | None = None
+    device_name: str | None = None
+    device_name_match: Literal["contains", "exact"] = "contains"
+    metric: str | None = None
+    days: int = Field(default=7, ge=1, le=30)
+    """Se True, restringe ao dia calendário (UTC) da leitura mais recente no scan."""
+    last_day_with_data: bool = False
+
+
+class GetTelemetryHistoryResult(BaseModel):
+    """Resumo para o LLM após consulta de histórico."""
+
+    device_id: str
+    device_name: str | None = None
+    metric: str
+    unit: str | None = None
+    period_label: str
+    point_count: int = 0
+    min_value: float | None = None
+    max_value: float | None = None
+    latest_value: float | None = None
+    has_data: bool = False
+
+
 class ReadLatestTelemetryResult(BaseModel):
     """Último lote de leituras persistidas para um device."""
 

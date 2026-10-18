@@ -47,6 +47,7 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 | **Snapshot de sessão** (chat) | `conversation_context` / `device_snapshot` | Metadados enxutos de devices (sem telemetria) no doc `chat_sessions`; ver task [011](../task/011-chat-session-context-policy.md). |
 | **Status de operação** | `operation_status` | Presença lógica do device (`online` \| `offline`); MQTT `.../status` + LWT. Ausente no MVP conversacional = conectividade **desconhecida**, não assumir online. |
 | **Política conversacional** | *(doc)* | Regras TomatoIA: [`docs/chat-conversational-policy.md`](chat-conversational-policy.md). |
+| **Estado do turno (UI chat)** | `thinking` \| `streaming` \| `done` | Indicador visual do assistant: três pontos antes do primeiro token; depois texto incremental — [`docs/contracts/chat-streaming-ux.md`](contracts/chat-streaming-ux.md). |
 
 ---
 

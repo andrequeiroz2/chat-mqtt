@@ -290,7 +290,7 @@ Motivos (mcp-builder / segurança):
 |----|-----------|
 | RF-CHAT-01 | Primeira resposta (ou mensagem de boas-vindas) usa `display_name` quando disponível. |
 | RF-CHAT-02 | Agente responde em português (UX); tools/contratos em inglês. |
-| RF-CHAT-03 | Streaming de resposta (SSE ou WebSocket) — **ABERTO** transporte exato. |
+| RF-CHAT-03 | Streaming de resposta (SSE) — UX **thinking** + **streaming** normativa em [`docs/contracts/chat-streaming-ux.md`](../docs/contracts/chat-streaming-ux.md); backend `/chat/stream` ainda entrega reply inteiro (evoluir tokens). |
 | RF-CHAT-04 | Histórico de conversa por `user_id` — **ABERTO** (Firestore subcoleção vs memória PoC). |
 
 #### 5.3 Perfil (CRUD mínimo)

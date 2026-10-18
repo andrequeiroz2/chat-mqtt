@@ -22,6 +22,17 @@ from mqtt_chat.services.actuator_command_language import (
     utterance_suggests_actuator_target,
 )
 
+_HISTORY_PATTERNS = (
+    r"grafico",
+    r"historico",
+    r"tendencia",
+    r"ultimos\s+\d+\s+dias",
+    r"ultima\s+semana",
+    r"evolucao",
+    r"\bchart\b",
+    r"plot",
+    r"serie\s+temporal",
+)
 _READ_PATTERNS = (
     r"últim[a]?\s+leitura",
     r"ultim[a]?\s+leitura",
@@ -139,6 +150,9 @@ def _normalize_text(value: str) -> str:
 def detect_chat_intent(message: str) -> ChatIntent | None:
     """Heurística MVP para intenções cobertas pelo resolver."""
     text = _normalize_text(message)
+    history = any(re.search(p, text) for p in _HISTORY_PATTERNS)
+    if history:
+        return "telemetry_history"
     realtime = any(re.search(p, text) for p in _REALTIME_PATTERNS)
     read = any(re.search(p, text) for p in _READ_PATTERNS)
     if realtime and not read:
@@ -362,7 +376,7 @@ def resolve_device_intent(
     actuators = _actuators(snapshot)
     named = _devices_named_in_message(snapshot, message)
 
-    if intent == "read_telemetry":
+    if intent in ("read_telemetry", "telemetry_history"):
         named_sensors = [d for d in named if d.device_type == "sensor"]
         named_actuators = [d for d in named if d.device_type == "actuator"]
 

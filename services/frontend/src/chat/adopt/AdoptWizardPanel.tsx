@@ -1,5 +1,8 @@
 import { useState, type FormEvent } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import type { ApiClient } from '../../api/client'
 import type { AdoptionSession } from '../../types/api/adoption'
 import { ApiError } from '../../api/client'
@@ -48,10 +51,9 @@ export function AdoptWizardPanel({
       }
     },
     onTerminal: (session: AdoptionSession) => {
-      const committed = session.session_status === 'committed'
       onAssistantLine(progressCopy(session.session_status, session.user_message))
       onPhaseChange('done', {
-        committed,
+        committed: session.session_status === 'committed',
         deviceId: session.device_id,
         deviceName: session.device_name,
       })
@@ -84,77 +86,89 @@ export function AdoptWizardPanel({
 
   if (phase === 'precheck') {
     return (
-      <div className="adopt-panel">
-        <p className="adopt-panel-title">Adicionar dispositivo</p>
-        <div className="adopt-actions">
-          <button
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle className="text-sm">Adicionar dispositivo</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button
             type="button"
-            className="btn primary"
+            variant="secondary"
             onClick={() => {
               onAssistantLine(SCAN_ASSISTANT)
               onPhaseChange('scan')
             }}
           >
             Sim, está ligado e no Wi‑Fi
-          </button>
-          <button type="button" className="btn secondary" onClick={onClose}>
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Ainda não
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
     )
   }
 
   if (phase === 'scan') {
     return (
-      <div className="adopt-panel">
-        <p className="adopt-panel-title">MAC ou QR (dev)</p>
-        <form className="adopt-form" onSubmit={(e) => void startAdoption(e)}>
-          <label className="adopt-label">
-            MAC
-            <input
-              value={macInput}
-              onChange={(e) => setMacInput(e.target.value)}
-              placeholder="3C:71:BF:4D:DB:0C"
-              autoComplete="off"
-            />
-          </label>
-          <label className="adopt-label">
-            Nome amigável
-            <input
-              value={deviceName}
-              onChange={(e) => setDeviceName(e.target.value)}
-              maxLength={120}
-            />
-          </label>
-          {error && <p className="chat-error">{error}</p>}
-          <div className="adopt-actions">
-            <button type="submit" className="btn primary">
-              Iniciar pareamento
-            </button>
-            <button type="button" className="btn secondary" onClick={onClose}>
-              Cancelar
-            </button>
-          </div>
-        </form>
-      </div>
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle className="text-sm">MAC ou QR (dev)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-col gap-3" onSubmit={(e) => void startAdoption(e)}>
+            <label className="flex flex-col gap-1.5 text-sm">
+              MAC
+              <Input
+                value={macInput}
+                onChange={(e) => setMacInput(e.target.value)}
+                placeholder="3C:71:BF:4D:DB:0C"
+                autoComplete="off"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm">
+              Nome amigável
+              <Input
+                value={deviceName}
+                onChange={(e) => setDeviceName(e.target.value)}
+                maxLength={120}
+              />
+            </label>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" variant="secondary">
+                Iniciar pareamento
+              </Button>
+              <Button type="button" variant="secondary" onClick={onClose}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     )
   }
 
   if (phase === 'adopting') {
     return (
-      <div className="adopt-panel adopt-panel-progress">
-        <p className="adopt-panel-title">Pareamento em andamento</p>
-        <p className="muted">{lastStatus ?? 'Aguarde…'}</p>
-      </div>
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle className="text-sm">Pareamento em andamento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{lastStatus ?? 'Aguarde…'}</p>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="adopt-panel">
-      <button type="button" className="btn secondary" onClick={onClose}>
-        Fechar assistente de adoção
-      </button>
-    </div>
+    <Card className="mb-4">
+      <CardContent className="pt-4">
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Fechar assistente de adoção
+        </Button>
+      </CardContent>
+    </Card>
   )
 }

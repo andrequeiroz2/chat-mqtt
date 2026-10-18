@@ -30,5 +30,8 @@ Cada task **DEVE** incluir, quando aplicável: **matriz de versões** (Docker, i
 | 009 | [009-adoption-guided-chat-ux.md](009-adoption-guided-chat-ux.md) | Em execução (009a MAC dev + polling no chat; QR câmera pendente) |
 | 010 | [010-embedded-esp32c3-micropython.md](010-embedded-esp32c3-micropython.md) | Em execução (WiFi fixo + handshake UC-A v0.1) |
 | 011 | [011-chat-session-context-policy.md](011-chat-session-context-policy.md) | MVP entregue (ondas 1–2 ✅; sem onda 3 — retomar opcionais/docs) |
+| 012 | [012-frontend-modern-ui-stack.md](012-frontend-modern-ui-stack.md) | Em execução (stack + direção visual dark/zinc ✅; bootstrap na 013) |
+| 013 | [013-frontend-tailwind-shadcn-bootstrap.md](013-frontend-tailwind-shadcn-bootstrap.md) | Concluída (Tailwind 4 + shadcn dark/zinc; dev via Docker `profile ui`) |
+| 014 | [014-telemetry-chart-recharts.md](014-telemetry-chart-recharts.md) | Concluída (`get_telemetry_history` + bolha Recharts no chat) |
 
 Referências: [`docs/requirements.md`](../docs/requirements.md) · [`.cursor/rules/mqtt-chat-project.mdc`](../.cursor/rules/mqtt-chat-project.mdc)
