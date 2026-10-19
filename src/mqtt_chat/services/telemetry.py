@@ -25,6 +25,56 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
+def _valid_readings_from_raw(
+    data: dict,
+    telemetry: TelemetryPayload,
+    mqtt_topic_base: str,
+) -> list[ReadingItem]:
+    """
+    Task 017: extrai somente leituras com `unit` obrigatório válido.
+
+    Itens inválidos são descartados individualmente (não o payload inteiro).
+    """
+    if telemetry.readings is not None:
+        valid: list[ReadingItem] = []
+        for idx, raw in enumerate(telemetry.readings):
+            if not isinstance(raw, dict):
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    events.TELEMETRY_READING_DISCARDED,
+                    "Telemetry reading discarded (not an object)",
+                    mqtt_topic_base=mqtt_topic_base,
+                    index=idx,
+                )
+                continue
+            try:
+                valid.append(ReadingItem.model_validate(raw))
+            except ValueError as exc:
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    events.TELEMETRY_READING_DISCARDED,
+                    "Telemetry reading discarded (invalid or missing unit)",
+                    mqtt_topic_base=mqtt_topic_base,
+                    index=idx,
+                    metric=raw.get("metric"),
+                    error=str(exc),
+                )
+        return valid
+    readings = telemetry.expanded_readings()
+    if not readings and telemetry.metric is not None:
+        log_event(
+            logger,
+            logging.WARNING,
+            events.TELEMETRY_READING_DISCARDED,
+            "Telemetry reading discarded (single-metric without valid unit)",
+            mqtt_topic_base=mqtt_topic_base,
+            metric=telemetry.metric,
+        )
+    return readings
+
+
 async def persist_telemetry(
     parsed: ParsedDeviceTopic,
     payload_bytes: bytes,
@@ -34,7 +84,8 @@ async def persist_telemetry(
     """Grava telemetria normalizada; falha logada, não propaga."""
     try:
         data = json.loads(payload_bytes.decode("utf-8"))
-        telemetry = TelemetryPayload.model_validate(data)
+        if not isinstance(data, dict):
+            raise ValueError("telemetry payload must be a JSON object")
     except (json.JSONDecodeError, ValueError) as exc:
         log_event(
             logger,
@@ -46,7 +97,20 @@ async def persist_telemetry(
         )
         return
 
-    readings = telemetry.expanded_readings()
+    try:
+        telemetry = TelemetryPayload.model_validate(data)
+    except ValueError as exc:
+        log_event(
+            logger,
+            logging.WARNING,
+            events.TELEMETRY_PARSE_FAILED,
+            "Invalid telemetry payload shape",
+            mqtt_topic_base=parsed.mqtt_topic_base,
+            error=str(exc),
+        )
+        return
+
+    readings = _valid_readings_from_raw(data, telemetry, parsed.mqtt_topic_base)
     if not readings:
         logger.debug("Empty telemetry topic=%s", parsed.mqtt_topic_base)
         return

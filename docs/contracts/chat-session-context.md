@@ -1,6 +1,6 @@
 # Contrato — contexto de sessão de chat (v1)
 
-> **Status:** Aprovado para implementação (task 011-b)  
+> **Status:** Implementado (task 011, ondas 1–2)  
 > **Normativo com:** [`docs/chat-conversational-policy.md`](../chat-conversational-policy.md), [`docs/glossary.md`](../glossary.md), [`docs/auth.md`](../auth.md)  
 > **Não substitui:** histórico de mensagens (`chat_sessions/.../messages`); telemetria (`devices/.../telemetry`)
 

@@ -11,13 +11,23 @@ type Options = {
   api: ApiClient
   onUpdate: (session: AdoptionSession) => void
   onTerminal: (session: AdoptionSession) => void
+  /** 016-04: chamado quando o polling falha (rede/API) ou volta a responder. */
+  onConnectivityChange?: (connected: boolean) => void
 }
 
-export function useAdoptionPoll({ sessionId, api, onUpdate, onTerminal }: Options): void {
+export function useAdoptionPoll({
+  sessionId,
+  api,
+  onUpdate,
+  onTerminal,
+  onConnectivityChange,
+}: Options): void {
   const onUpdateRef = useRef(onUpdate)
   const onTerminalRef = useRef(onTerminal)
+  const onConnectivityRef = useRef(onConnectivityChange)
   onUpdateRef.current = onUpdate
   onTerminalRef.current = onTerminal
+  onConnectivityRef.current = onConnectivityChange
 
   useEffect(() => {
     if (!sessionId) {
@@ -26,6 +36,7 @@ export function useAdoptionPoll({ sessionId, api, onUpdate, onTerminal }: Option
 
     let cancelled = false
     let intervalId: number | undefined
+    let hadFailure = false
 
     const stop = () => {
       cancelled = true
@@ -41,6 +52,10 @@ export function useAdoptionPoll({ sessionId, api, onUpdate, onTerminal }: Option
         if (cancelled) {
           return
         }
+        if (hadFailure) {
+          hadFailure = false
+          onConnectivityRef.current?.(true)
+        }
         if (!TERMINAL.has(session.session_status)) {
           onUpdateRef.current(session)
           return
@@ -48,7 +63,10 @@ export function useAdoptionPoll({ sessionId, api, onUpdate, onTerminal }: Option
         onTerminalRef.current(session)
         stop()
       } catch {
-        /* polling silencioso; erro global no painel se necessário */
+        if (!cancelled && !hadFailure) {
+          hadFailure = true
+          onConnectivityRef.current?.(false)
+        }
       }
     }
 

@@ -371,6 +371,13 @@ Chaves em **inglês**. Timestamps **ISO-8601 UTC** com sufixo `Z` salvo indicaç
 
 ### 6.1 Telemetria — sensor (uma ou várias métricas)
 
+| Campo | Tipo | Obrigatório | Notas |
+|-------|------|-------------|-------|
+| `ts` | string ISO-8601 UTC | opcional | Se ausente, o worker usa `received_at` |
+| `metric` | string | sim | Nome da grandeza (ex.: `temperature`) |
+| `value` | number | sim | Leitura numérica |
+| `unit` | string **não vazia** | **sim** (task 017) | Grandeza/unidade livre (ex.: `C`, `%`, `Bar`, `hPa`) — **sem** vocabulário fechado |
+
 **Opção recomendada (uma mensagem, multi-métrica):**
 
 ```json
@@ -383,7 +390,7 @@ Chaves em **inglês**. Timestamps **ISO-8601 UTC** com sufixo `Z` salvo indicaç
 }
 ```
 
-**Opção compatível PoC (uma métrica por mensagem)** — permanece válida até simulador migrar:
+**Opção compatível PoC (uma métrica por mensagem):**
 
 ```json
 {
@@ -394,7 +401,7 @@ Chaves em **inglês**. Timestamps **ISO-8601 UTC** com sufixo `Z` salvo indicaç
 }
 ```
 
-Worker **deve** aceitar ambos na v1 de ingestão (task 004).
+Worker **deve** aceitar ambos os formatos. **Rigidez de ingestão (task 017):** cada leitura é validada individualmente — leituras sem `unit` válido são **descartadas** (evento `telemetry.reading.discarded`); as demais leituras válidas do mesmo payload são persistidas normalmente. Um payload em que **todas** as leituras são inválidas é tratado como telemetria vazia (nada gravado).
 
 ### 6.2 Comando — actuator
 
@@ -555,6 +562,7 @@ Ver §4.3. Resposta de `/adopt/start` retorna `session_id` e estado; metadados d
 | RF-TOP-01 | Sufixos: `telemetry`, `commands`, `state`, `status` |
 | RF-PAY-01 | Telemetria multi-métrica via array `readings` (recomendado) |
 | RF-PAY-02 | Worker aceita payload legado PoC single-metric |
+| RF-PAY-03 | `unit` obrigatório por leitura (string não vazia, vocabulário aberto); leituras sem `unit` válido são descartadas individualmente na ingestão (task 017) |
 | RF-ADOPT-01 | Usuário autenticado inicia adoção via UI; **`devices` só após commit** |
 | RF-ADOPT-02 | `claim_token`: **`bound`** após commit enquanto device adotado; **reutilizável** após `remove_device` + reset/eligibilidade (§3.2) — **não** uso único vitalício; falha de sessão **não** consome token |
 | RF-ADOPT-03 | QR/câmera e progresso podem viver **no painel chat** (UI); **proibido** tool MCP/LLM decodificar QR ou executar handshake/commit. **Proibido** `register_device`. Ver [009-adoption-guided-chat-ux.md](../../task/009-adoption-guided-chat-ux.md) |

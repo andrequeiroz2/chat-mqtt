@@ -112,9 +112,9 @@ flowchart TB
 
 ### 3.1 Fluxo — gráfico da última semana
 
-1. Usuário pede no chat → LLM invoca tool `get_telemetry_history(device_id, period)`.
-2. Tool consulta série temporal no banco (`timestamp`, `device_id`, métrica/valor).
-3. Backend envia mensagem estruturada ao frontend → componente de gráfico (ex.: Recharts) na interface do chat.
+1. Usuário pede no chat → o **resolver determinístico** pode atender sem LLM ([`chat-conversational-policy.md`](chat-conversational-policy.md) §12.1); fora do padrão conhecido, o LLM invoca a tool `get_telemetry_history` com entrada `TelemetryHistoryInput` (`device_id?`, `device_name?`, `metric?`, `days` ∈ 1–30, `last_day_with_data`) — ver [`src/mqtt_chat/schemas/telemetry_tools.py`](../src/mqtt_chat/schemas/telemetry_tools.py).
+2. Tool consulta série temporal no Firestore (subcoleção `telemetry` por `device`: `timestamp`, `device_id`, métrica/valor).
+3. Backend envia mensagem estruturada ao frontend (`suggested_ui.timeseries`) → componente de gráfico (Recharts) na interface do chat — ver [`contracts/telemetry-chart-ui.md`](contracts/telemetry-chart-ui.md).
 
 ### 3.2 Fluxo — leitura e atuador
 
@@ -332,16 +332,25 @@ Padrões detalhados: copiar/adaptar de `~/DEV/mcp/mcp-sport/docs/Architectural_D
 
 ---
 
-## 7. Tools MCP mínimas (PoC)
+## 7. Tools MCP (PoC)
 
 Todas com validação Pydantic e erros tipados (`device_not_found`, `timeout`, `no_data`).
 
-1. `list_devices` — devices **já adotados** (inclusão **somente** via adoção UI — §4.2)
-2. `update_device(device_id, ...)` — metadados pós-adoção
-3. `remove_device(device_id)`
-4. `read_latest_telemetry(device_id, metric?)`
-5. `publish_command(device_id, command)` — exige `device_type == actuator`
-6. `get_telemetry_history(device_id, metric, start, end)` — alimenta gráfico
+**Implementadas** — registradas em [`src/mqtt_chat/server.py`](../src/mqtt_chat/server.py) (estado real em 2026-10-18):
+
+1. `list_devices` — devices **já adotados** (inclusão **somente** via adoção UI — §4.2); contrato em [`contracts/mcp-list-devices.md`](contracts/mcp-list-devices.md)
+2. `read_latest_telemetry(device_id, metric?)` — contrato em [`contracts/mcp-read-latest-telemetry.md`](contracts/mcp-read-latest-telemetry.md)
+3. `publish_command(device_id, command)` — exige `device_type == actuator`; contrato em [`contracts/actuator-binary-command.md`](contracts/actuator-binary-command.md)
+4. `get_realtime_stream_info(device_id?)` — URL/token do WebSocket de telemetria em tempo real; contrato em [`contracts/realtime-websocket.md`](contracts/realtime-websocket.md)
+
+**Planejadas (ainda não implementadas no MCP):**
+
+5. `update_device(device_id, ...)` — metadados pós-adoção
+6. `remove_device(device_id)`
+
+**Somente no agente Pydantic AI (não exposta via MCP):**
+
+7. `get_telemetry_history` — entrada `TelemetryHistoryInput` (`device_id?`, `device_name?`, `metric?`, `days` ∈ 1–30, `last_day_with_data`); alimenta gráfico — ver §3.1 e [`contracts/telemetry-chart-ui.md`](contracts/telemetry-chart-ui.md)
 
 **Fora do MCP MVP:** `register_device` — não criar device pelo chat; ver [`glossary.md`](glossary.md).
 

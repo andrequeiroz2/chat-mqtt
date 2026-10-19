@@ -17,6 +17,7 @@ MQTT_WORKER_STOPPED = "mqtt.worker.stopped"
 DEVICE_TOPIC_PARSED = "device.topic.parsed"
 TELEMETRY_PARSE_FAILED = "telemetry.parse.failed"
 TELEMETRY_PARSE_COMPLETED = "telemetry.parse.completed"
+TELEMETRY_READING_DISCARDED = "telemetry.reading.discarded"
 
 # Persist
 TELEMETRY_PERSIST_COMPLETED = "telemetry.persist.completed"

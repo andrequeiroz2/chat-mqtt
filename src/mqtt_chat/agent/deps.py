@@ -20,4 +20,7 @@ class UserDeps:
     session_id: str
     db: FirestoreClient
     history_empty: bool = False
+    # Invariante (018-04): resetado a None em chat_turn.execute_chat_turn antes de
+    # run_chat; tools podem atribuir durante o run; só é propagado à resposta HTTP
+    # quando scope == "product". Nunca reutilizar valor de um turno anterior.
     suggested_ui: SuggestedUiAction | None = None

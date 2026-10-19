@@ -65,17 +65,25 @@ Regra Cursor (cita este glossário e [`docs/skills.md`](skills.md) como normativ
 
 ## Tools MCP (nome EN + descrição PT)
 
+**Implementadas** — registradas em `src/mqtt_chat/server.py` (estado real em 2026-10-18):
+
 | Tool (inglês) | Ação em português (docstring / UX) |
 |---------------|-------------------------------------|
 | `list_devices` | Listar dispositivos do usuário (somente já adotados) — contrato: [`docs/contracts/mcp-list-devices.md`](contracts/mcp-list-devices.md) |
+| `read_latest_telemetry` | Ler última telemetria — contrato: [`docs/contracts/mcp-read-latest-telemetry.md`](contracts/mcp-read-latest-telemetry.md) |
+| `publish_command` | Publicar comando (actuator) — contrato: [`docs/contracts/actuator-binary-command.md`](contracts/actuator-binary-command.md) |
+| `get_realtime_stream_info` | Metadados do WebSocket tempo real (UI) — [`docs/contracts/realtime-websocket.md`](contracts/realtime-websocket.md) |
+
+**Planejadas** (nomes reservados; **não** estão no servidor MCP hoje):
+
+| Tool (inglês) | Ação em português (docstring / UX) |
+|---------------|-------------------------------------|
 | `update_device` | Atualizar metadados de device **já adotado** (ex.: nome amigável) |
 | `remove_device` | Remover device da conta (libera re-adoção — contrato §3.2) |
-| `read_latest_telemetry` | Ler última telemetria — contrato: [`docs/contracts/mcp-read-latest-telemetry.md`](contracts/mcp-read-latest-telemetry.md) |
-| `publish_command` | Publicar comando (actuator) |
-| `get_telemetry_history` | Obter histórico para gráfico |
-| `get_realtime_stream_info` | Metadados do WebSocket tempo real (UI) — [`docs/contracts/realtime-websocket.md`](contracts/realtime-websocket.md) |
-| `get_user_profile` | Ler perfil do usuário autenticado (opcional; preferir deps para saudação) |
-| `update_user_profile` | Atualizar campos permitidos do perfil (ex.: `display_name`) |
+| `get_user_profile` | Ler perfil do usuário autenticado (opcional; preferir deps para saudação) — hoje perfil é lido via REST/Firestore, não via MCP |
+| `update_user_profile` | Atualizar campos permitidos do perfil (ex.: `display_name`) — idem |
+
+**Somente no agente Pydantic AI** (não exposta via MCP): `get_telemetry_history` — obter histórico para gráfico; entrada `TelemetryHistoryInput` (`device_id?`, `device_name?`, `metric?`, `days`, `last_day_with_data`).
 
 **Não expor no MCP (MVP):** `register_device` — **não** cria device. Inclusão **somente** via **adoção** (UI + QR); o LLM **orienta** o usuário à tela de adoção (RF-ADOPT-03). PoC com simulador/cadastro manual **não** é modelo de produção.
 

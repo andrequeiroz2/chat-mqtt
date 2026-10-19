@@ -40,10 +40,11 @@ export function LiveTelemetryChatBubble({
   return (
     <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-card-foreground shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
+        {/* 016-03: indicador “ao vivo” usa foreground (zinc) — semântico de presença, não verde PoC. */}
         <span
           className={cn(
             'size-2 shrink-0 rounded-full',
-            connected ? 'bg-green-500 shadow-[0_0_0_2px_rgb(34_197_94_/_25%)]' : 'bg-muted-foreground',
+            connected ? 'bg-foreground shadow-[0_0_0_2px_var(--ring)]' : 'bg-muted-foreground',
           )}
           aria-hidden
         />

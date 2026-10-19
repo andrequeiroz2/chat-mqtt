@@ -33,5 +33,9 @@ Cada task **DEVE** incluir, quando aplicável: **matriz de versões** (Docker, i
 | 012 | [012-frontend-modern-ui-stack.md](012-frontend-modern-ui-stack.md) | Em execução (stack + direção visual dark/zinc ✅; bootstrap na 013) |
 | 013 | [013-frontend-tailwind-shadcn-bootstrap.md](013-frontend-tailwind-shadcn-bootstrap.md) | Concluída (Tailwind 4 + shadcn dark/zinc; dev via Docker `profile ui`) |
 | 014 | [014-telemetry-chart-recharts.md](014-telemetry-chart-recharts.md) | Concluída (`get_telemetry_history` + bolha Recharts no chat) |
+| 016 | [016-frontend-review-hardening.md](016-frontend-review-hardening.md) | Concluída (hardening frontend pós-revisão) |
+| 017 | [017-telemetry-payload-unit-required.md](017-telemetry-payload-unit-required.md) | Concluída (`unit` obrigatório na telemetria; descarte parcial) |
+| 018 | [018-chat-agent-rules-review.md](018-chat-agent-rules-review.md) | Concluída (prompt em seções; erros de tool; policy §12.1–12.2) |
+| 019 | [019-docs-code-sync.md](019-docs-code-sync.md) | Concluída (requirements §3.1/§7, glossário, chat-session-context e chat-streaming-ux sincronizados com o código) |
 
 Referências: [`docs/requirements.md`](../docs/requirements.md) · [`.cursor/rules/mqtt-chat-project.mdc`](../.cursor/rules/mqtt-chat-project.mdc)

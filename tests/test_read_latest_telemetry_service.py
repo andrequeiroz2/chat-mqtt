@@ -186,6 +186,7 @@ def test_read_latest_single_device_auto_resolve() -> None:
                             {
                                 "metric": "temperature",
                                 "value": 1.0,
+                                "unit": "C",
                                 "received_at": "2026-10-14T04:00:00Z",
                             },
                         )

@@ -236,6 +236,24 @@ Contrato técnico: [`contracts/actuator-binary-command.md`](contracts/actuator-b
 | **Tools** | Dados reais (telemetria, listagem) |
 | **TomatoIA** | Redação em PT; **usar templates T1–T6, T-INTENT-MIXED, T-POST-ADOPT** quando o resolver indicar `template_id`; pode acrescentar **uma** frase curta contextual, **sem** alterar fatos (valores, datas, online/offline) |
 
+### 12.1 Autoridade primária (normativo — 018)
+
+O **resolver determinístico é a autoridade primária** de intenção e device. Turnos cobertos por G1–G12 ou por intents com `short_circuit` (leitura, histórico/gráfico, tempo real, comando de atuador, MAC/IP, tópicos MQTT) **não** passam pelo LLM — a resposta vem de template ou de execução direta em `services/`.
+
+O **LLM** (Pydantic AI) cobre somente o **long tail** não resolvido: conversação geral in-scope, listagens abertas, pedidos que o resolver marcou como `pass_through`. Nesses casos, o system prompt (seções Escopo / Tools / Proibições / Erros) e o `output_type` estruturado (`scope` + `reply`) são as rédeas; proibições críticas de dados continuam garantidas pelas **tools** (que leem Firestore) e nunca pelo improviso do modelo.
+
+### 12.2 Heurísticas de período do resolver (histórico/gráfico)
+
+Parsing PT em `services/resolver_turn.py` (normativo para o MVP):
+
+| Utterance (exemplos) | Parâmetro aplicado |
+|----------------------|--------------------|
+| “últimos **N** dias” | `days = N` (limitado a 1–30) |
+| “semana”, “última semana”, “7 dias” | `days = 7` (default) |
+| “último dia” | `days = 1` |
+| “último dia **com registros**” | `last_day_with_data = true` (restringe ao dia calendário UTC da leitura mais recente) |
+| “temperatura” / “umidade” no texto | `metric` correspondente; ausente → métrica mais frequente no período |
+
 ---
 
 ## 13. Histórico
@@ -245,3 +263,4 @@ Contrato técnico: [`contracts/actuator-binary-command.md`](contracts/actuator-b
 | 2026-10-15 | v1 — policy inicial; gatilhos G1–G12; templates T1–T6; desconhecido se `operation_status` ausente |
 | 2026-10-16 | §10 — NL atuador → 0/1; confirmação G10; templates T-COMMAND-* |
 | 2026-10-16 | §11 — proibido expor device_id ao usuário |
+| 2026-10-18 | §12.1 — resolver como autoridade primária; §12.2 — heurísticas de período (task 018) |

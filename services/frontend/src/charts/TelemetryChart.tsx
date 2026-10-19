@@ -10,6 +10,9 @@ import {
 
 import { formatMetricLabel, formatPeriodLabel } from './metricLabels'
 
+// 016-09: os valores oklch() abaixo espelham os tokens zinc dark em index.css
+// (--card, --muted-foreground, --border, --foreground). Manter alinhados.
+
 export type TelemetryChartPoint = {
   received_at: string
   value: number

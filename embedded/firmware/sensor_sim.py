@@ -19,9 +19,15 @@ def random_readings():
             lo, hi = hi, lo
         value = random.uniform(lo, hi)
         value = round(value, 1)
-        item = {"metric": metric, "value": value}
-        unit = spec.get("unit")
-        if unit:
-            item["unit"] = unit
+        # Task 017: unit obrigatório no payload; default coerente com metric quando
+        # o profile não declarar (evita descarte no worker).
+        unit = spec.get("unit") or _DEFAULT_UNIT_BY_METRIC.get(metric, "")
+        item = {"metric": metric, "value": value, "unit": unit}
         readings.append(item)
     return readings
+
+
+_DEFAULT_UNIT_BY_METRIC = {
+    "temperature": "C",
+    "humidity": "%",
+}

@@ -73,6 +73,8 @@ async def execute_chat_turn(
 
     history = load_message_history(db, deps.user_id, deps.session_id, max_messages)
     deps.history_empty = len(history) == 0
+    # 018-04: invariante — zera antes do run; tools atribuem durante o turno;
+    # propagado à resposta apenas se scope == "product" (ver abaixo).
     deps.suggested_ui = None
     raw = await run_chat(
         agent,

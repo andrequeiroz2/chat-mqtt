@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,6 +39,20 @@ export function AdoptWizardPanel({
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [lastStatus, setLastStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pollOffline, setPollOffline] = useState(false)
+
+  // 016-01: ao voltar para precheck, limpa dados da tentativa anterior (evita MAC/sessão fantasma).
+  useEffect(() => {
+    if (phase !== 'precheck') {
+      return
+    }
+    setMacInput('')
+    setDeviceName('Meu sensor')
+    setSessionId(null)
+    setLastStatus(null)
+    setError(null)
+    setPollOffline(false)
+  }, [phase])
 
   useAdoptionPoll({
     sessionId: phase === 'adopting' ? sessionId : null,
@@ -58,6 +72,7 @@ export function AdoptWizardPanel({
         deviceName: session.device_name,
       })
     },
+    onConnectivityChange: (connected) => setPollOffline(!connected),
   })
 
   async function startAdoption(event: FormEvent) {
@@ -155,8 +170,13 @@ export function AdoptWizardPanel({
         <CardHeader>
           <CardTitle className="text-sm">Pareamento em andamento</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">{lastStatus ?? 'Aguarde…'}</p>
+          {pollOffline && (
+            <p className="text-sm text-muted-foreground">
+              Sem conexão com o servidor. Tentando novamente…
+            </p>
+          )}
         </CardContent>
       </Card>
     )

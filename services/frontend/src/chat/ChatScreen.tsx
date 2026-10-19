@@ -186,9 +186,21 @@ export function ChatScreen() {
     [api, appendAssistant, sessionId],
   )
 
+  const threadListRef = useRef<HTMLUListElement>(null)
   const threadEndRef = useRef<HTMLLIElement>(null)
+
+  // 016-06: só rola automaticamente quando o usuário já está perto do fim
+  // (evita “roubar” a leitura durante histórico longo ou telemetria ao vivo).
   useEffect(() => {
-    threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    const list = threadListRef.current
+    if (!list) {
+      return
+    }
+    const distanceToBottom = list.scrollHeight - list.scrollTop - list.clientHeight
+    const NEAR_BOTTOM_PX = 120
+    if (distanceToBottom < NEAR_BOTTOM_PX) {
+      threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
   }, [messages, sending])
 
   return (
@@ -205,7 +217,11 @@ export function ChatScreen() {
         </Button>
       </header>
 
-      <ul className="mb-4 flex min-h-60 flex-1 list-none flex-col gap-3 p-0" aria-live="polite">
+      <ul
+        ref={threadListRef}
+        className="mb-4 flex min-h-60 flex-1 list-none flex-col gap-3 overflow-y-auto p-0"
+        aria-live="polite"
+      >
         {messages.length === 0 && (
           <li className="text-sm text-muted-foreground">Envie uma mensagem para começar.</li>
         )}

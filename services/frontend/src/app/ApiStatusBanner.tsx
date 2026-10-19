@@ -23,7 +23,7 @@ export function ApiStatusBanner() {
 
   return (
     <div
-      className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+      className="border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
       role="status"
     >
       Backend offline — na raiz do repo rode <code className="text-xs">uv run mqtt-chat-api</code>{' '}

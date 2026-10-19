@@ -41,7 +41,7 @@ Comportamento esperado da **bolha do assistant** enquanto o backend processa um 
 | Caminho | Situação atual | Alvo |
 |---------|----------------|------|
 | `POST /api/v1/chat` | Resposta **única** após turno completo | Manter para turnos especiais (ex.: pós-adoção); **não** simula digitação. |
-| `POST /api/v1/chat/stream` | SSE existe; hoje emite **um** evento `message` com `reply` **inteiro** após `execute_chat_turn` | **Evoluir** para tokens/chunks via Pydantic AI `run_stream` / `run_stream_events` (skill `building-pydantic-ai-agents`, [Run Methods and Streaming](https://pydantic.dev/docs/ai/)). |
+| `POST /api/v1/chat/stream` | SSE existe; hoje emite **um** evento `message` com `reply` **inteiro** após `execute_chat_turn`. **Nota (estado 2026-10-18):** o frontend **não** consome este endpoint — [`ChatScreen.tsx`](../../services/frontend/src/chat/ChatScreen.tsx) usa apenas `postChat` (REST); `paths.ts` define `chatStream` sem consumidor. | **Evoluir** para tokens/chunks via Pydantic AI `run_stream` / `run_stream_events` (skill `building-pydantic-ai-agents`, [Run Methods and Streaming](https://pydantic.dev/docs/ai/)) e ligar o frontend ao endpoint. |
 
 ### Eventos SSE propostos (v1.1)
 

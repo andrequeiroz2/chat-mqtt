@@ -9,14 +9,16 @@ export function AssistantMessageText({ text }: AssistantMessageTextProps) {
   return (
     <>
       {parts.map((part, index) => {
+        // 016-10: chave estável (índice + conteúdo) — evita reuse errado ao atualizar texto.
+        const key = `${index}:${part}`
         if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
           return (
-            <strong key={index} className="font-semibold text-foreground">
+            <strong key={key} className="font-semibold text-foreground">
               {part.slice(2, -2)}
             </strong>
           )
         }
-        return <span key={index}>{part}</span>
+        return <span key={key}>{part}</span>
       })}
     </>
   )
