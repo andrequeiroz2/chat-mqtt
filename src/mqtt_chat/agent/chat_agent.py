@@ -12,6 +12,7 @@ from pydantic_ai.usage import UsageLimits
 
 from mqtt_chat.agent.deps import UserDeps
 from mqtt_chat.agent.device_tools import register_device_tools
+from mqtt_chat.agent.loop_guard import build_loop_guard
 from mqtt_chat.agent.tomato_ia import ASSISTANT_NAME
 from mqtt_chat.config.settings import Settings
 from mqtt_chat.schemas.chat import ChatTurnResult
@@ -48,7 +49,15 @@ def _build_system_prompt(display_name: str, *, history_empty: bool) -> str:
         f"- start_realtime_telemetry: valores em tempo real, stream contínuo, monitorar ao vivo no chat "
         f"(mesmos parâmetros de device).\n"
         f"- get_telemetry_history: gráfico ou histórico (ex.: última semana, tendência).\n"
-        f"Evite repetir a mesma tool se o resultado já respondeu ao pedido.\n"
+        f"## Regra de parada\n"
+        f"Quando o resultado de uma tool já responde à pergunta, emita a resposta final "
+        f"IMEDIATAMENTE — não chame mais nenhuma tool (máximo 2 tools por turno). "
+        f"Nunca repita uma tool já chamada neste turno: se faltar dado, responda com o que "
+        f"tem e diga a limitação. Perguntas de inventário (quais/quantos devices o usuário "
+        f"tem) se resolvem com UMA chamada a list_devices — responda só com a listagem. "
+        f"Perguntas sobre metadados do device (modelo, status, data de adoção) também se "
+        f"resolvem com UMA chamada a list_devices — responda APENAS o que foi perguntado, "
+        f"sem incluir leituras, telemetria ou gráficos que não foram pedidos.\n"
         f"\n"
         f"## Proibições\n"
         f"- Nunca invente números de telemetria.\n"
@@ -104,6 +113,7 @@ def create_chat_agent(settings: Settings) -> Agent[UserDeps, ChatTurnResult]:
         name="tomato_ia_assistant",
         deps_type=UserDeps,
         output_type=ChatTurnResult,
+        capabilities=[build_loop_guard()],
     )
 
     @agent.instructions

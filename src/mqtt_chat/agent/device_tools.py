@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Literal
 
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, RunContext, ToolFailed
 
 from mqtt_chat.agent.deps import UserDeps
 from mqtt_chat.logging import events, log_event
@@ -72,7 +72,9 @@ def register_device_tools(agent: Agent[UserDeps, ChatTurnResult]) -> None:
         try:
             return devices_service.list_devices(ctx.deps.db, ctx.deps.user_id, params)
         except devices_service.ListDevicesError as exc:
-            raise ValueError(exc.code) from exc
+            # Falha terminal: o modelo vê {"error": code} e responde conforme
+            # a seção "Erros de tool" do system prompt (sem retry, sem 500).
+            raise ToolFailed(exc.code) from exc
 
     @agent.tool
     def read_latest_telemetry(
@@ -111,7 +113,7 @@ def register_device_tools(agent: Agent[UserDeps, ChatTurnResult]) -> None:
                 params,
             )
         except telemetry_queries_service.ReadLatestTelemetryError as exc:
-            raise ValueError(exc.code) from exc
+            raise ToolFailed(exc.code) from exc
 
     @agent.tool
     def start_realtime_telemetry(
@@ -151,13 +153,13 @@ def register_device_tools(agent: Agent[UserDeps, ChatTurnResult]) -> None:
                 params,
             )
         except telemetry_queries_service.ReadLatestTelemetryError as exc:
-            raise ValueError(exc.code) from exc
+            raise ToolFailed(exc.code) from exc
 
         snap = ctx.deps.db.collection("devices").document(resolved_id).get()
         data = snap.to_dict() if snap.exists else {}
         status = data.get("operation_status")
         if status != "online":
-            raise ValueError("device_not_online_for_realtime")
+            raise ToolFailed("device_not_online_for_realtime")
 
         ctx.deps.suggested_ui = RealtimeTelemetrySuggestedUi(
             device_id=resolved_id,
@@ -209,7 +211,7 @@ def register_device_tools(agent: Agent[UserDeps, ChatTurnResult]) -> None:
                 params,
             )
         except telemetry_queries_service.ReadLatestTelemetryError as exc:
-            raise ValueError(exc.code) from exc
+            raise ToolFailed(exc.code) from exc
         if chart_ui is not None:
             ctx.deps.suggested_ui = chart_ui
         return result

@@ -39,6 +39,15 @@ def test_prompt_core_rules_preserved() -> None:
     assert "chat-conversational-policy.md" in prompt
 
 
+def test_prompt_stop_rule() -> None:
+    """Task 021-03: regra de parada positiva (substitui a proibitiva da 020-02)."""
+    prompt = _build_system_prompt("André", history_empty=False)
+    assert "## Regra de parada" in prompt
+    assert "IMEDIATAMENTE" in prompt
+    assert "2 tools por turno" in prompt
+    assert "list_devices" in prompt
+
+
 def test_prompt_greeting_only_when_history_empty() -> None:
     prompt_empty = _build_system_prompt("André", history_empty=True)
     assert "cumprimente pelo nome" in prompt_empty
@@ -47,3 +56,10 @@ def test_prompt_greeting_only_when_history_empty() -> None:
     prompt_nonempty = _build_system_prompt("André", history_empty=False)
     assert "cumprimente pelo nome" not in prompt_nonempty
     assert "André" in prompt_nonempty
+
+
+def test_prompt_metadata_rule() -> None:
+    """022-03 — metadados do device respondidos com 1 list_devices, sem leituras."""
+    prompt = _build_system_prompt("André", history_empty=False)
+    assert "metadados do device" in prompt
+    assert "data de adoção" in prompt

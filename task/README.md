@@ -37,5 +37,9 @@ Cada task **DEVE** incluir, quando aplicável: **matriz de versões** (Docker, i
 | 017 | [017-telemetry-payload-unit-required.md](017-telemetry-payload-unit-required.md) | Concluída (`unit` obrigatório na telemetria; descarte parcial) |
 | 018 | [018-chat-agent-rules-review.md](018-chat-agent-rules-review.md) | Concluída (prompt em seções; erros de tool; policy §12.1–12.2) |
 | 019 | [019-docs-code-sync.md](019-docs-code-sync.md) | Concluída (requirements §3.1/§7, glossário, chat-session-context e chat-streaming-ux sincronizados com o código) |
+| 020 | [020-chat-tool-error-payload.md](020-chat-tool-error-payload.md) | Concluída (`ToolFailed` nas tools do agente; prompt anti-proatividade; F3 adiada) |
+| 021 | [021-deterministic-first-chat.md](021-deterministic-first-chat.md) | Concluída (G13 inventário no resolver; loop guard; regra de parada; 83 testes) |
+| 022 | [022-metadata-intent-ui-gate.md](022-metadata-intent-ui-gate.md) | Concluída |
+| 023 | [023-device-lwt-presence.md](023-device-lwt-presence.md) | Concluída (verificação manual no hardware pendente) |
 
 Referências: [`docs/requirements.md`](../docs/requirements.md) · [`.cursor/rules/mqtt-chat-project.mdc`](../.cursor/rules/mqtt-chat-project.mdc)

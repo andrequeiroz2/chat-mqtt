@@ -33,6 +33,14 @@ class OperationClient:
         tail = device_id.replace("-", "")[-8:]
         return "mqtt-chat-op-" + tail
 
+    def _status_payload(self, operation_status):
+        return json.dumps(
+            {
+                "ts": time_util.iso_utc(),
+                "operation_status": operation_status,
+            }
+        )
+
     def connect(self):
         kwargs = {}
         if self.mqtt_user:
@@ -40,20 +48,26 @@ class OperationClient:
         if self.mqtt_pass:
             kwargs["password"] = self.mqtt_pass
 
+        # keepalive=60: broker dispara o LWT ~90s apos queda abrupta (1,5x).
         self._client = MQTTClient(
             self._client_id(),
             self.broker_host,
             self.broker_port,
+            keepalive=60,
             **kwargs,
         )
+        # Task 023-01: LWT obrigatorio no contrato .../status (retain, QoS 1).
+        # Sem will, queda de energia/WiFi deixava o retained "online" eterno.
+        self._client.set_last_will(
+            self.status_topic,
+            self._status_payload("offline"),
+            retain=True,
+            qos=1,
+        )
         self._client.connect()
-        online = {
-            "ts": time_util.iso_utc(),
-            "operation_status": "online",
-        }
         self._client.publish(
             self.status_topic,
-            json.dumps(online),
+            self._status_payload("online"),
             qos=1,
             retain=True,
         )
@@ -85,7 +99,15 @@ class OperationClient:
 
     def disconnect(self):
         if self._client:
+            # Task 023-02: desconexao graciosa NAO dispara LWT — publicar
+            # offline retained antes de desconectar.
             try:
+                self._client.publish(
+                    self.status_topic,
+                    self._status_payload("offline"),
+                    qos=1,
+                    retain=True,
+                )
                 self._client.disconnect()
             except OSError:
                 pass

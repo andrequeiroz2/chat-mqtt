@@ -175,6 +175,80 @@ def template_clarify_devices(options: list[tuple[str | None, DeviceTypeLabel]]) 
     return "\n".join(lines)
 
 
+def _inventory_kind_pt(device_type: DeviceTypeLabel | None, count: int) -> str:
+    if device_type == "sensor":
+        return "sensor" if count == 1 else "sensores"
+    if device_type == "actuator":
+        return "atuador" if count == 1 else "atuadores"
+    return "dispositivo" if count == 1 else "dispositivos"
+
+
+def template_inventory_empty(device_type: DeviceTypeLabel | None = None) -> str:
+    """G13 — inventário vazio (recorte por tipo ou geral)."""
+    kind = _inventory_kind_pt(device_type, 2)
+    return (
+        f"Você ainda **não tem {kind}** adotados na sua conta. "
+        "Para adicionar, use o fluxo de **adoção** na interface (QR / pareamento)."
+    )
+
+
+def template_inventory(
+    *,
+    entries: list[tuple[str | None, DeviceTypeLabel, str | None]],
+    device_type: DeviceTypeLabel | None,
+) -> str:
+    """
+    G13 — lista inventário a partir do snapshot.
+
+    ``entries``: (device_name, device_type, operation_status) já filtrado pelo recorte.
+    """
+    count = len(entries)
+    kind = _inventory_kind_pt(device_type, count)
+    header = f"Você tem **{count} {kind}** adotado{'s' if count > 1 else ''}:"
+    lines = [header]
+    sensor_n = 0
+    actuator_n = 0
+    for name, dtype, status in entries:
+        if dtype == "sensor":
+            sensor_n += 1
+            idx = sensor_n if not (name or "").strip() else None
+            label_pt = "sensor"
+            shown = display_device_name(name, device_type="sensor", list_index=idx)
+        else:
+            actuator_n += 1
+            idx = actuator_n if not (name or "").strip() else None
+            label_pt = "atuador"
+            shown = display_device_name(name, device_type="actuator", list_index=idx)
+        status_pt = status if status else "sem status"
+        suffix = f" ({label_pt})" if device_type is None else ""
+        lines.append(f"• **{shown}**{suffix} — {status_pt}")
+    return "\n".join(lines)
+
+
+def _format_date_pt(iso_value: str) -> str:
+    """ISO → DD/MM/YYYY; fallback: primeiros 10 chars do valor bruto."""
+    from datetime import datetime
+
+    try:
+        parsed = datetime.fromisoformat(iso_value.replace("Z", "+00:00"))
+        return parsed.strftime("%d/%m/%Y")
+    except (ValueError, AttributeError):
+        return iso_value[:10]
+
+
+def template_adoption_date(
+    *,
+    device_name: str | None,
+    device_type: DeviceTypeLabel | None,
+    adopted_at: str,
+) -> str:
+    """G14 — data de adoção a partir do snapshot."""
+    label = display_device_name(device_name, device_type=device_type)
+    kind = "sensor" if device_type == "sensor" else "atuador" if device_type == "actuator" else "dispositivo"
+    date_pt = _format_date_pt(adopted_at)
+    return f"O {kind} **{label}** foi adotado (registrado) em **{date_pt}**."
+
+
 def template_actuator_instruct(*, device_name: str | None) -> str:
     name = display_device_name(device_name, device_type="actuator")
     return (

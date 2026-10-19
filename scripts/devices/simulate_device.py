@@ -27,9 +27,9 @@ Tópicos e payloads (JSON, chaves em inglês — ver docs/glossary.md):
         Actuator (loop periódico, retain):
             ts, channel, value (boolean)
 
-    status     — PUBLICA uma vez ao conectar (retain)
+    status     — PUBLICA ao conectar/desligar (retain) + LWT offline (retain)
         ts                 (string ISO-8601)
-        operation_status   (string, ex.: "online")
+        operation_status   (string, "online" | "offline")
 
 QoS usado neste script: 1 em publish/subscribe; retain em status e state do actuator.
 """
@@ -195,6 +195,14 @@ class DeviceSimulator:
             client_id=client_id,
             protocol=mqtt.MQTTv311,
         )
+        # Task 023-03: LWT no contrato .../status (retain, QoS 1) — sem will,
+        # parada abrupta do simulador deixava o retained "online" eterno.
+        self._client.will_set(
+            topic_status(args.user_id, args.device_id),
+            payload=json.dumps({"ts": iso_timestamp(), "operation_status": "offline"}),
+            qos=1,
+            retain=True,
+        )
         self._client.on_connect = self._on_connect
         self._client.on_message = self._on_message
 
@@ -297,6 +305,21 @@ class DeviceSimulator:
 
                 time.sleep(args.interval)
         finally:
+            # Task 023-03: parada graciosa nao dispara LWT — publicar offline
+            # retained e garantir entrega antes de desligar o loop.
+            try:
+                offline = json.dumps(
+                    {"ts": iso_timestamp(), "operation_status": "offline"}
+                )
+                info = self._client.publish(
+                    topic_status(args.user_id, args.device_id),
+                    offline,
+                    qos=1,
+                    retain=True,
+                )
+                info.wait_for_publish(timeout=5)
+            except (OSError, ValueError, RuntimeError) as exc:
+                print(f"Aviso: falha ao publicar offline na saida: {exc}", file=sys.stderr)
             self._client.loop_stop()
             self._client.disconnect()
 

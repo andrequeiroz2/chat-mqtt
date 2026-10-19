@@ -141,6 +141,113 @@ def test_g4_name_match_single_sensor() -> None:
     assert result.device_id == "s2"
 
 
+def test_g13_inventory_all_devices() -> None:
+    snap = [_sensor("s1", "Sala"), _actuator("a1", "Relé")]
+    result = resolve_device_intent("quantos dispositivos eu tenho?", _ctx(snapshot=snap))
+    assert result.outcome == "execute"
+    assert result.intent == "list_devices"
+    assert result.trigger_id == "G13"
+    assert result.device_type is None
+    assert result.short_circuit is True
+
+
+def test_g13_inventory_sensor_filter() -> None:
+    result = resolve_device_intent(
+        "tenho algum sensor registrado?",
+        _ctx(snapshot=[_sensor("s1", "Sala")]),
+    )
+    assert result.intent == "list_devices"
+    assert result.device_type == "sensor"
+
+
+def test_g13_inventory_actuator_filter_and_list_verb() -> None:
+    result = resolve_device_intent(
+        "liste meus atuadores",
+        _ctx(snapshot=[]),
+    )
+    assert result.intent == "list_devices"
+    assert result.device_type == "actuator"
+
+
+def test_g13_inventory_quais_meus_sensores() -> None:
+    result = resolve_device_intent(
+        "quais sao os meus sensores?",
+        _ctx(snapshot=[_sensor("s1", "Sala")]),
+    )
+    assert result.intent == "list_devices"
+    assert result.device_type == "sensor"
+
+
+def test_inventory_does_not_steal_read_intent() -> None:
+    """"qual a última leitura..." segue sendo read_telemetry (G1), não inventário."""
+    result = resolve_device_intent(
+        "qual a última leitura do meu sensor?",
+        _ctx(snapshot=[_sensor("s1", "Sala")]),
+    )
+    assert result.intent == "read_telemetry"
+    assert result.trigger_id == "G1"
+
+
+def test_g14_adoption_date_single_device() -> None:
+    result = resolve_device_intent(
+        "que dia ele foi registrado?",
+        _ctx(snapshot=[_sensor("s1", "Meu sensor")]),
+    )
+    assert result.outcome == "execute"
+    assert result.intent == "device_metadata"
+    assert result.trigger_id == "G14"
+    assert result.device_id == "s1"
+    assert result.short_circuit is True
+
+
+def test_g14_adoption_date_named_device() -> None:
+    snap = [_sensor("s1", "Sala"), _sensor("s2", "Quintal")]
+    result = resolve_device_intent(
+        "quando o sensor Quintal foi adotado?",
+        _ctx(snapshot=snap),
+    )
+    assert result.intent == "device_metadata"
+    assert result.device_id == "s2"
+
+
+def test_g14_adoption_date_uses_focus() -> None:
+    snap = [_sensor("s1", "Sala"), _sensor("s2", "Quintal")]
+    result = resolve_device_intent(
+        "que dia ele foi registrado?",
+        _ctx(snapshot=snap, focus="s2"),
+    )
+    assert result.device_id == "s2"
+
+
+def test_g14_adoption_date_clarify_without_target() -> None:
+    snap = [_sensor("s1", "Sala"), _sensor("s2", "Quintal")]
+    result = resolve_device_intent(
+        "quando foi adotado?",
+        _ctx(snapshot=snap),
+    )
+    assert result.outcome == "clarify"
+    assert result.trigger_id == "G14"
+
+
+def test_g14_adoption_date_empty_inventory() -> None:
+    result = resolve_device_intent(
+        "que dia meu sensor foi registrado?",
+        _ctx(snapshot=[]),
+    )
+    assert result.outcome == "execute"
+    assert result.intent == "device_metadata"
+    assert result.device_id is None
+
+
+def test_g14_does_not_steal_read_intent() -> None:
+    """"quando foi a última leitura?" segue read_telemetry, não G14."""
+    result = resolve_device_intent(
+        "quando foi a última leitura?",
+        _ctx(snapshot=[_sensor("s1", "Sala")]),
+    )
+    assert result.intent == "read_telemetry"
+
+
 def test_mac_address_question_instruct_without_llm() -> None:
     result = resolve_device_intent(
         "qual o mac address do meu sensor?",

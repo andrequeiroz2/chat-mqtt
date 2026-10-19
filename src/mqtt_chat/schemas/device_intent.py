@@ -8,7 +8,14 @@ from pydantic import BaseModel, Field
 
 from mqtt_chat.schemas.conversation_context import ClarifyOption, Connectivity
 
-ChatIntent = Literal["read_telemetry", "telemetry_history", "realtime", "actuator_command"]
+ChatIntent = Literal[
+    "read_telemetry",
+    "telemetry_history",
+    "realtime",
+    "actuator_command",
+    "list_devices",
+    "device_metadata",
+]
 ResolverOutcomeKind = Literal["pass_through", "execute", "clarify", "instruct"]
 
 
@@ -41,6 +48,8 @@ class DeviceIntentResolverResult(BaseModel):
             "telemetry_history",
             "realtime",
             "actuator_command",
+            "list_devices",
+            "device_metadata",
         ):
             return True
         return False

@@ -13,11 +13,19 @@ from mqtt_chat.agent.deps import UserDeps
 from mqtt_chat.agent.tomato_ia import OFF_TOPIC_REPLY
 from mqtt_chat.config.settings import get_settings
 from mqtt_chat.logging import events, log_event
-from mqtt_chat.schemas.chat import ChatTurnResult, SuggestedUiAction
+from mqtt_chat.schemas.chat import (
+    ChatTurnResult,
+    RealtimeTelemetrySuggestedUi,
+    SuggestedUiAction,
+    TelemetryChartSuggestedUi,
+)
 from mqtt_chat.schemas.turn_outcome import TurnOutcome
 from mqtt_chat.services.chat_history import append_turn, load_message_history
 from mqtt_chat.services.conversation_context import ensure_conversation_context
-from mqtt_chat.services.device_intent_resolver import resolve_device_intent
+from mqtt_chat.services.device_intent_resolver import (
+    detect_chat_intent,
+    resolve_device_intent,
+)
 from mqtt_chat.services.resolver_turn import (
     execute_pending_actuator_command,
     execute_resolver_turn,
@@ -27,6 +35,27 @@ if TYPE_CHECKING:
     from google.cloud.firestore_v1 import Client as FirestoreClient
 
 logger = logging.getLogger(__name__)
+
+
+def gate_suggested_ui_by_intent(
+    suggested_ui: SuggestedUiAction | None,
+    user_message: str,
+) -> SuggestedUiAction | None:
+    """
+    Gate 022-02: painel rico só propaga se a mensagem do usuário pedir a intent.
+
+    No caminho LLM, uma tool proativa (ex.: get_telemetry_history em pergunta de
+    metadado) abriria gráfico/painel sem pedido — o backend descarta aqui.
+    O caminho do resolver não passa por este gate (lá a intent já foi validada).
+    """
+    if suggested_ui is None:
+        return None
+    intent = detect_chat_intent(user_message)
+    if isinstance(suggested_ui, TelemetryChartSuggestedUi) and intent != "telemetry_history":
+        return None
+    if isinstance(suggested_ui, RealtimeTelemetrySuggestedUi) and intent != "realtime":
+        return None
+    return suggested_ui
 
 
 def finalize_turn(raw: ChatTurnResult) -> TurnOutcome:
@@ -85,6 +114,7 @@ async def execute_chat_turn(
     )
     outcome = finalize_turn(raw)
     suggested_ui = deps.suggested_ui if outcome.scope == "product" else None
+    suggested_ui = gate_suggested_ui_by_intent(suggested_ui, user_message)
     outcome = TurnOutcome(
         reply=outcome.reply,
         persist=outcome.persist,

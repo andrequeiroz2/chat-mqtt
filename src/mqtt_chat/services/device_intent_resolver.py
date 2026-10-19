@@ -52,6 +52,28 @@ _REALTIME_PATTERNS = (
     r"monitorar",
     r"enquanto\s+convers",
 )
+# Inventário (G13): "quantos devices tenho?", "quais são os meus sensores?",
+# "tenho algum sensor registrado?", "liste meus devices".
+_INVENTORY_PATTERNS = (
+    r"quant(os|as)\b.{0,25}\b(dispositivo|device|sensor|atuador)",
+    r"quais\s+(sao\s+)?(os\s+)?(meus\s+)?(dispositivos|devices|sensores|atuadores)",
+    r"\b(tenho|possuo|temos|tem)\s+(algum|alguma|alguns|algumas|um|uma)?\s*"
+    r"(dispositivo|device|sensor|atuador)",
+    r"\b(liste|listar|listar|mostre|mostrar|ver)\s+(os\s+)?(meus\s+)?"
+    r"(dispositivos|devices|sensores|atuadores)",
+)
+# Metadado de adoção (G14): "que dia ele foi registrado?", "quando adotei?",
+# "em que data cadastrei o sensor?".
+_METADATA_ADOPTION_PATTERNS = (
+    r"(que dia|quando|em que data)\b.{0,30}\b(registr|adot|cadastr)",
+    r"\bdata\s+(de|da)\s+(adocao|registro|cadastro)",
+)
+
+
+def detect_adoption_date_question(message: str) -> bool:
+    """Pergunta sobre data de adoção/registro do device (G14)."""
+    text = _normalize_text(message)
+    return any(re.search(p, text) for p in _METADATA_ADOPTION_PATTERNS)
 _DEVICE_IDENTITY_QUESTION_PATTERNS = (
     re.compile(r"\bmac\b", re.IGNORECASE),
     re.compile(r"endere[cç]o\s+mac", re.IGNORECASE),
@@ -93,8 +115,8 @@ def is_mqtt_topic_question(message: str) -> bool:
 def _device_type_hint_from_message(message: str) -> DeviceType | None:
     """Atuador vs sensor explícito na frase (ex.: tópico do meu atuador)."""
     text = _normalize_text(message)
-    wants_actuator = bool(re.search(r"\batuador\b|\bactuator\b|\brele\b|\brel[eé]\b", text))
-    wants_sensor = bool(re.search(r"\bsensor\b", text))
+    wants_actuator = bool(re.search(r"\batuador(es)?\b|\bactuator\b|\brele\b|\brel[eé]\b", text))
+    wants_sensor = bool(re.search(r"\bsensor(es)?\b", text))
     if wants_actuator and not wants_sensor:
         return "actuator"
     if wants_sensor and not wants_actuator:
@@ -145,6 +167,20 @@ def _resolve_single_device_for_topic(
 def _normalize_text(value: str) -> str:
     folded = unicodedata.normalize("NFKD", value.casefold())
     return "".join(ch for ch in folded if not unicodedata.combining(ch))
+
+
+def detect_inventory_hint(message: str) -> DeviceType | Literal["all"] | None:
+    """
+    Pergunta de inventário (quantos/quais/tenho devices/sensores/atuadores)?
+
+    Retorna o recorte pedido ("sensor", "actuator" ou "all"); None se não for
+    pergunta de inventário. Padrões exigem o tipo explícito para não roubar
+    intents de leitura (ex.: "qual a última leitura do meu sensor?").
+    """
+    text = _normalize_text(message)
+    if not any(re.search(p, text) for p in _INVENTORY_PATTERNS):
+        return None
+    return _device_type_hint_from_message(message) or "all"
 
 
 def detect_chat_intent(message: str) -> ChatIntent | None:
@@ -316,6 +352,43 @@ def _resolve_actuator_command(
     )
 
 
+def _resolve_adoption_date(
+    message: str,
+    context: ConversationContext,
+) -> DeviceIntentResolverResult:
+    """G14 — alvo: nome citado → foco de sessão → device único; ≥2 sem alvo → clarify."""
+    snapshot = context.device_snapshot
+    named = _devices_named_in_message(snapshot, message)
+
+    target: DeviceSnapshotEntry | None = None
+    if len(named) == 1:
+        target = named[0]
+    elif len(named) > 1:
+        return _clarify_from_entries(named, trigger_id="G14")
+
+    if target is None:
+        target = _entry_by_id(snapshot, context.session_focus_device_id)
+    if target is None and len(snapshot) == 1:
+        target = snapshot[0]
+    if target is None and len(snapshot) >= 2:
+        return _clarify_from_entries(snapshot, trigger_id="G14")
+
+    if target is None:
+        return DeviceIntentResolverResult(
+            outcome="execute",
+            intent="device_metadata",
+            trigger_id="G14",
+        )
+    return DeviceIntentResolverResult(
+        outcome="execute",
+        intent="device_metadata",
+        trigger_id="G14",
+        device_id=target.device_id,
+        device_name=target.device_name,
+        device_type=target.device_type,
+    )
+
+
 def resolve_device_intent(
     message: str,
     context: ConversationContext,
@@ -362,6 +435,20 @@ def resolve_device_intent(
             device_name=target.device_name,
             device_type=target.device_type,
         )
+
+    # G13 — inventário: resposta 100% a partir do snapshot (sem LLM, sem tools).
+    inventory_hint = detect_inventory_hint(message)
+    if inventory_hint is not None:
+        return DeviceIntentResolverResult(
+            outcome="execute",
+            intent="list_devices",
+            trigger_id="G13",
+            device_type=None if inventory_hint == "all" else inventory_hint,
+        )
+
+    # G14 — metadado de adoção: resposta do snapshot (adopted_at), sem LLM.
+    if detect_adoption_date_question(message):
+        return _resolve_adoption_date(message, context)
 
     intent = detect_chat_intent(message)
     if intent is None:

@@ -60,6 +60,8 @@ Detalhe de persistência: [`contracts/chat-session-context.md`](contracts/chat-s
 | G10 | Comando / destrutivo | Confirmação obrigatória (contrato futuro `publish_command`) |
 | G11 | Última leitura, device resolvido, offline ou desconhecido | §7 + templates **T1–T4** |
 | G12 | Tempo real, device resolvido, offline ou desconhecido | §7; templates **T5–T6**; **não** abrir stream |
+| G13 | Inventário ("quantos/quais/tenho devices/sensores/atuadores") | Responder do snapshot (`list_devices` determinístico, sem LLM) — task 021 |
+| G14 | Metadado de adoção ("que dia/quando foi registrado/adotado") | Responder `adopted_at` do snapshot; alvo: nome citado → foco → device único; ≥2 sem alvo → clarificar — task 022 |
 
 ---
 

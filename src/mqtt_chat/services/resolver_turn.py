@@ -203,6 +203,22 @@ def _reply_from_history_execute(
     return chart_ui, reply
 
 
+def _reply_from_inventory(
+    context: ConversationContext,
+    resolved: DeviceIntentResolverResult,
+) -> str:
+    """G13 — inventário respondido só com o snapshot (sem LLM, sem tools)."""
+    entries = context.device_snapshot
+    if resolved.device_type:
+        entries = [e for e in entries if e.device_type == resolved.device_type]
+    if not entries:
+        return templates.template_inventory_empty(resolved.device_type)
+    return templates.template_inventory(
+        entries=[(e.device_name, e.device_type, e.operation_status) for e in entries],
+        device_type=resolved.device_type,
+    )
+
+
 def _reply_from_read_execute(
     db: FirestoreClient,
     user_id: str,
@@ -321,6 +337,17 @@ def execute_resolver_turn(
             reply = _reply_mqtt_topics(db, deps.user_id, entry)
         else:
             reply = _reply_from_clarify(resolved)
+    elif resolved.outcome == "execute" and resolved.intent == "list_devices":
+        reply = _reply_from_inventory(context, resolved)
+    elif resolved.outcome == "execute" and resolved.intent == "device_metadata":
+        if entry is None:
+            reply = templates.template_inventory_empty(None)
+        else:
+            reply = templates.template_adoption_date(
+                device_name=resolved.device_name,
+                device_type=resolved.device_type,
+                adopted_at=entry.adopted_at,
+            )
     elif resolved.outcome == "execute" and resolved.intent == "read_telemetry":
         reply = _reply_from_read_execute(db, deps.user_id, resolved, entry)
     elif resolved.outcome == "execute" and resolved.intent == "telemetry_history":
